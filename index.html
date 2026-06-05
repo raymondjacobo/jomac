@@ -878,6 +878,12 @@
           <div class="kpi-icon">💰</div>
           <div class="kpi-sub">Pagos registrados</div>
         </div>
+        <div class="kpi-card">
+          <div class="kpi-label">INGRESOS MES</div>
+          <div class="kpi-value" id="kpiIngresosMes">$0</div>
+          <div class="kpi-icon">📆</div>
+          <div class="kpi-sub">Mes actual</div>
+        </div>
       </div>
 
       <!-- Asistencias recientes -->
@@ -2016,6 +2022,10 @@ function loadDashboard() {
   document.getElementById('kpiHoy').textContent     = attHoy.length;
   document.getElementById('kpiVencen').textContent  = vencen;
   document.getElementById('kpiIngresos').textContent= '$'+ingrHoy.toLocaleString();
+  const thisMonth = today.slice(0,7);
+  const ingrMes = payments.filter(p => limpiarFecha(p.fechaPago).substring(0,7) === thisMonth).reduce((s,p)=>s+Number(p.monto),0);
+  const elMes = document.getElementById('kpiIngresosMes');
+  if (elMes) elMes.textContent = '$'+ingrMes.toLocaleString();
   renderDashCumple();
 
   // Recent attendance
