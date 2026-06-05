@@ -2762,7 +2762,9 @@ function processCheckin() {
   if (!pago) {
     const payments = DB.get('payments',[]);
     const misPagos = payments.filter(p => String(p.memberId)===String(m.id));
-    result.innerHTML = `<div class="alert alert-warn">⚠ ${m.nombre} — SIN MEMBRESÍA ACTIVA<br><small>Pagos encontrados: ${misPagos.length} | ID: ${m.id}</small></div>`;
+    const p0 = misPagos[0];
+    const debug = p0 ? `activo:${p0.activo}(${typeof p0.activo}) fechaFin:${p0.fechaFin}` : 'sin pagos';
+    result.innerHTML = `<div class="alert alert-warn">⚠ ${m.nombre} — SIN MEMBRESÍA ACTIVA<br><small>${debug}</small></div>`;
     setTimeout(checkinClear, 4000);
     return;
   }
