@@ -1816,6 +1816,8 @@ function limpiarHora(valor) {
 async function restaurarAlIniciar() {
   const gasUrl = GAS_URL;
   if (!gasUrl) return;
+  // Pequeño delay para que el DOM esté completamente renderizado
+  await new Promise(r => setTimeout(r, 100));
   // Mostrar indicador de carga en login
   const loginBrand = document.querySelector('.login-brand-desc');
   const loginRight = document.querySelector('.login-panel-right');
