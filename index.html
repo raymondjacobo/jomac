@@ -1828,10 +1828,15 @@ async function restaurarAlIniciar() {
   if (loginBrand) {
     loginBrand.innerHTML = '<div style="text-align:center;"><div style="font-size:2rem;margin-bottom:.5rem;">⏳</div><div style="color:#FFD700;font-size:1rem;font-weight:700;letter-spacing:1px;">Sincronizando datos...</div><div style="color:rgba(255,255,255,.5);font-size:.8rem;margin-top:.3rem;">Por favor espera</div></div>';
   }
+  // Tiempo mínimo de 1.5s para que el usuario vea el mensaje
+  const [json] = await Promise.all([
+    fetch(gasUrl + '?action=getData', { credentials:'omit' })
+      .then(r => r.json())
+      .catch(() => null),
+    new Promise(r => setTimeout(r, 1500))
+  ]);
   try {
-    const r = await fetch(gasUrl + '?action=getData', { credentials:'omit' });
-    const json = await r.json();
-    if (!json.ok || !json.data) return;
+    if (!json || !json.ok || !json.data) return;
     const d = json.data;
     if (d.members)      DB.set('members',      d.members);
     if (d.payments)     DB.set('payments',      d.payments);
