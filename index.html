@@ -5109,8 +5109,11 @@ function compartirWhatsApp() {
 // ════════════════════════════════════
 // BOOT
 // ════════════════════════════════════
-initDB();
-document.getElementById('dashDate').textContent = formatDateNice(fmtDate(new Date()));
+document.addEventListener('DOMContentLoaded', function() {
+  initDB();
+  const dd = document.getElementById('dashDate');
+  if (dd) dd.textContent = formatDateNice(fmtDate(new Date()));
+});
 </script>
 <script>
 document.addEventListener('click', function(e) {
