@@ -1677,12 +1677,31 @@ function initDB() {
   restaurarAlIniciar();
 }
 
+// Convierte hora de Sheets (puede venir como fecha completa) a HH:MM
+function limpiarHora(valor) {
+  if (!valor) return '';
+  const s = String(valor);
+  // Si viene como fecha ISO: 1899-12-30T12:35:40.000Z
+  if (s.includes('T')) {
+    const partes = s.split('T')[1].split(':');
+    return partes[0] + ':' + partes[1];
+  }
+  // Si ya viene como HH:MM o H:MM
+  return s.substring(0,5);
+}
+
 async function restaurarAlIniciar() {
   const gasUrl = GAS_URL;
   if (!gasUrl) return;
   // Mostrar indicador de carga en login
   const loginBrand = document.querySelector('.login-brand-desc');
-  if (loginBrand) loginBrand.textContent = 'Cargando datos...';
+  if (loginBrand) {
+    loginBrand.textContent = '⏳ Sincronizando datos...';
+    loginBrand.style.color = '#FFD700';
+    loginBrand.style.fontSize = '1rem';
+    loginBrand.style.fontWeight = '700';
+    loginBrand.style.letterSpacing = '1px';
+  }
   try {
     const r = await fetch(gasUrl + '?action=getData', { credentials:'omit' });
     const json = await r.json();
@@ -1704,15 +1723,23 @@ async function restaurarAlIniciar() {
     if (d.config)       DB.set('config',        d.config);
     if (loginBrand) {
       loginBrand.textContent = '✔ ¡Datos listos! Inicia sesión.';
-      loginBrand.style.color = '#fff';
+      loginBrand.style.color = '#7FFF00';
+      loginBrand.style.fontSize = '1rem';
       loginBrand.style.fontWeight = '700';
     }
-    // Pequeño delay para que se vea el mensaje
     await new Promise(r => setTimeout(r, 1500));
+    if (loginBrand) {
+      loginBrand.textContent = 'Tu gimnasio, tu disciplina.';
+      loginBrand.style.color = 'rgba(255,255,255,0.6)';
+      loginBrand.style.fontSize = '';
+      loginBrand.style.fontWeight = '';
+    }
   } catch(e) {
-    if (loginBrand) loginBrand.textContent = 'Sin conexión — datos locales.';
-    // Inicializar vacío para que no vuelva a intentar
-    DB.set('members', []);
+    console.error('restaurarAlIniciar error:', e);
+    if (loginBrand) {
+      loginBrand.textContent = '⚠ Sin conexión: ' + e.message;
+      loginBrand.style.color = '#FFD700';
+    }
   }
 }
 
@@ -3653,18 +3680,7 @@ function deleteHorario(id) {
 }
 
 
-// Convierte hora de Sheets (puede venir como fecha completa) a HH:MM
-function limpiarHora(valor) {
-  if (!valor) return '';
-  const s = String(valor);
-  // Si viene como fecha ISO: 1899-12-30T12:35:40.000Z
-  if (s.includes('T')) {
-    const partes = s.split('T')[1].split(':');
-    return partes[0] + ':' + partes[1];
-  }
-  // Si ya viene como HH:MM o H:MM
-  return s.substring(0,5);
-}
+// limpiarHora movida al inicio
 
 function renderHorarios() {
   const horarios = DB.get('horarios', []).filter(h=>h.activo);
