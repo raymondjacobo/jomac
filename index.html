@@ -1241,6 +1241,116 @@
 
     </div>
 
+    <!-- REPORTE PAGOS -->
+    <div class="page" id="pageReportePagos">
+      <div class="page-header">
+        <div>
+          <div class="page-title">REPORTE DE PAGOS</div>
+          <div class="page-subtitle">INGRESOS POR DÍA Y MES</div>
+        </div>
+      </div>
+      <!-- Filtros -->
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem;">
+        <div class="field-group" style="margin:0;min-width:140px;">
+          <label>VER POR</label>
+          <select id="rpTipo" onchange="renderReportePagos()">
+            <option value="dia">DÍA</option>
+            <option value="mes" selected>MES</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin:0;min-width:160px;" id="rpFechaDiaWrap">
+          <label>FECHA</label>
+          <input type="date" id="rpFechaDia" onchange="renderReportePagos()"/>
+        </div>
+        <div class="field-group" style="margin:0;min-width:160px;" id="rpMesWrap">
+          <label>MES</label>
+          <select id="rpMes" onchange="renderReportePagos()">
+            <option value="01">Enero</option><option value="02">Febrero</option>
+            <option value="03">Marzo</option><option value="04">Abril</option>
+            <option value="05">Mayo</option><option value="06" selected>Junio</option>
+            <option value="07">Julio</option><option value="08">Agosto</option>
+            <option value="09">Septiembre</option><option value="10">Octubre</option>
+            <option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin:0;min-width:100px;" id="rpAnioWrap">
+          <label>AÑO</label>
+          <input type="number" id="rpAnio" value="2026" min="2024" max="2030" onchange="renderReportePagos()" style="width:90px;"/>
+        </div>
+      </div>
+      <!-- KPIs -->
+      <div class="kpi-grid" id="rpKpis" style="margin-bottom:1.5rem;"></div>
+      <!-- Tabla -->
+      <div class="table-wrap">
+        <div class="table-header">
+          <div class="table-title" id="rpTableTitle">PAGOS</div>
+          <div style="display:flex;gap:.5rem;">
+            <button class="btn-secondary" onclick="exportReportePagosCSV()" style="font-size:.78rem;padding:.4rem .9rem;">⬇ CSV</button>
+            <button class="btn-secondary" onclick="exportReportePagosPDF()" style="font-size:.78rem;padding:.4rem .9rem;border-color:var(--red);color:var(--red);">📄 PDF</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>FECHA</th><th>MIEMBRO</th><th>PLAN</th><th>MONTO</th><th>MÉTODO</th></tr></thead>
+          <tbody id="rpTabla"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REPORTE ASISTENCIA -->
+    <div class="page" id="pageReporteAsistencia">
+      <div class="page-header">
+        <div>
+          <div class="page-title">REPORTE DE ASISTENCIA</div>
+          <div class="page-subtitle">ENTRADAS POR DÍA Y MES</div>
+        </div>
+      </div>
+      <!-- Filtros -->
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem;">
+        <div class="field-group" style="margin:0;min-width:140px;">
+          <label>VER POR</label>
+          <select id="raTipo" onchange="renderReporteAsistencia()">
+            <option value="dia">DÍA</option>
+            <option value="mes" selected>MES</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin:0;min-width:160px;" id="raFechaDiaWrap">
+          <label>FECHA</label>
+          <input type="date" id="raFechaDia" onchange="renderReporteAsistencia()"/>
+        </div>
+        <div class="field-group" style="margin:0;min-width:160px;" id="raMesWrap">
+          <label>MES</label>
+          <select id="raMes" onchange="renderReporteAsistencia()">
+            <option value="01">Enero</option><option value="02">Febrero</option>
+            <option value="03">Marzo</option><option value="04">Abril</option>
+            <option value="05">Mayo</option><option value="06" selected>Junio</option>
+            <option value="07">Julio</option><option value="08">Agosto</option>
+            <option value="09">Septiembre</option><option value="10">Octubre</option>
+            <option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin:0;min-width:100px;" id="raAnioWrap">
+          <label>AÑO</label>
+          <input type="number" id="raAnio" value="2026" min="2024" max="2030" onchange="renderReporteAsistencia()" style="width:90px;"/>
+        </div>
+      </div>
+      <!-- KPIs -->
+      <div class="kpi-grid" id="raKpis" style="margin-bottom:1.5rem;"></div>
+      <!-- Tabla -->
+      <div class="table-wrap">
+        <div class="table-header">
+          <div class="table-title" id="raTableTitle">ASISTENCIAS</div>
+          <div style="display:flex;gap:.5rem;">
+            <button class="btn-secondary" onclick="exportReporteAsistenciaCSV()" style="font-size:.78rem;padding:.4rem .9rem;">⬇ CSV</button>
+            <button class="btn-secondary" onclick="exportReporteAsistenciaPDF()" style="font-size:.78rem;padding:.4rem .9rem;border-color:var(--red);color:var(--red);">📄 PDF</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>FECHA</th><th>HORA</th><th>MIEMBRO</th><th>PLAN</th><th>CLASE</th></tr></thead>
+          <tbody id="raTabla"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- INSTRUCTORES -->
     <div class="page" id="pageInstructores">
       <div class="page-header">
@@ -1888,6 +1998,9 @@ const ADMIN_NAV = [
   { id:'asistencia', label:'Asistencia',  icon:'📋', page:'pageAsistencia' },
   { id:'horarios',   label:'Horarios',    icon:'🕐', page:'pageHorarios' },
   { id:'instructores', label:'Instructores', icon:'🏋️', page:'pageInstructores' },
+  { section: 'REPORTES' },
+  { id:'reportePagos',     label:'Rep. Pagos',       icon:'📈', page:'pageReportePagos' },
+  { id:'reporteAsistencia', label:'Rep. Asistencia',  icon:'📅', page:'pageReporteAsistencia' },
   { section: 'SISTEMA' },
   { id:'config',     label:'Configuración', icon:'⚙️', page:'pageConfig' },
 ];
@@ -1970,6 +2083,8 @@ function navigateTo(id) {
   if (id==='asistencia') { setTodayFilter(); renderAsistencia(); }
   if (id==='horarios')   { renderHorarios(); populateHInstructorSelect(); }
   if (id==='instructores') renderInstructores();
+  if (id==='reportePagos')     { initReporteFechas(); renderReportePagos(); }
+  if (id==='reporteAsistencia') { initReporteFechas(); renderReporteAsistencia(); }
   if (id==='checkin')    { patchAttendanceHorarios(); renderAttendanceList(); }
   if (id==='perfil')     loadMemberProfile();
   if (id==='mispagos')    loadMisPagos();
@@ -2037,7 +2152,7 @@ function loadDashboard() {
         <div class="member-avatar">${a.memberName[0]}</div>
         <span>${a.memberName}</span>
       </div></td>
-      <td style="font-family:var(--font-cond);color:var(--text-light);">${a.hora}</td>
+      <td style="font-family:var(--font-cond);color:var(--text-light);">${limpiarHora(a.hora)}</td>
       <td>${planBadge(a.plan)}</td>
       <td><span class="badge badge-green">ACTIVO</span></td>
     </tr>`).join('') : `<tr><td colspan="4" class="no-data">Sin asistencias hoy</td></tr>`;
@@ -2418,7 +2533,7 @@ function viewMiembro(id) {
       ${att.filter(a=>a.memberId===id).reverse().slice(0,5).map(a=>`
         <div style="display:flex;justify-content:space-between;padding:.6rem 1rem;border-bottom:1px solid var(--border);">
           <span style="font-size:.85rem;">${formatDateNice(a.fecha)}</span>
-          <span style="font-family:var(--font-cond);color:var(--text-light);font-size:.82rem;">${a.hora}</span>
+          <span style="font-family:var(--font-cond);color:var(--text-light);font-size:.82rem;">${limpiarHora(a.hora)}</span>
         </div>`).join('') || '<div class="no-data" style="padding:1rem;">Sin asistencias</div>'}
     </div>`;
   openModal('modalVerMiembro');
@@ -2841,7 +2956,7 @@ function processCheckin() {
   const att   = DB.get('attendance', []);
   const ya    = att.find(a => String(a.memberId)===String(m.id) && limpiarFecha(a.fecha)===today);
   if (ya) {
-    result.innerHTML = `<div class="alert alert-info">ℹ ${m.nombre} ya registró entrada hoy a las ${ya.hora}</div>`;
+    result.innerHTML = `<div class="alert alert-info">ℹ ${m.nombre} ya registró entrada hoy a las ${limpiarHora(ya.hora)}</div>`;
     setTimeout(checkinClear, 2500);
     return;
   }
@@ -2961,7 +3076,7 @@ function renderAttendanceList() {
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--red);line-height:1;">${a.hora}</div>
+          <div style="font-family:var(--font-display);font-size:1.1rem;color:var(--red);line-height:1;">${limpiarHora(a.hora)}</div>
         </div>
       </div>`;
     }).join('');
@@ -3062,7 +3177,7 @@ function renderCheckinMember() {
       listEl.innerHTML = recientes.length ? recientes.map(a=>`
         <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;border-bottom:1px solid var(--border);">
           <span style="font-size:.88rem;">${formatDateNice(a.fecha)}</span>
-          <span style="font-family:var(--font-cond);color:var(--text-light);font-size:.82rem;">${a.hora}${a.horarioNombre?' · '+a.horarioNombre:''}</span>
+          <span style="font-family:var(--font-cond);color:var(--text-light);font-size:.82rem;">${limpiarHora(a.hora)}${a.horarioNombre?' · '+a.horarioNombre:''}</span>
         </div>`).join('') : '<div class="no-data">Sin entradas registradas</div>';
     }
     return;
@@ -3111,7 +3226,7 @@ function renderCheckinMember() {
       <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;border-bottom:1px solid var(--border);">
         <span style="font-size:.88rem;">${formatDateNice(a.fecha)}</span>
         <div style="text-align:right;">
-          <div style="font-family:var(--font-cond);color:var(--text-light);font-size:.82rem;">${a.hora}</div>
+          <div style="font-family:var(--font-cond);color:var(--text-light);font-size:.82rem;">${limpiarHora(a.hora)}</div>
           ${a.horarioNombre?`<div style="font-size:.68rem;color:var(--text-light);font-family:var(--font-cond);">${a.horarioNombre}${a.forzado?' · extra':''}</div>`:''}
         </div>
       </div>`).join('') : '<div class="no-data">Sin entradas registradas</div>';
@@ -3169,7 +3284,7 @@ function renderAsistencia() {
       <td>${planBadge(a.plan)}</td>
       <td>
         ${claseNombre ? `<div style="font-weight:600;font-size:.87rem;">${claseNombre}</div>` : ''}
-        <div style="font-family:var(--font-cond);font-size:.78rem;color:var(--text-light);margin-top:1px;">🕐 ${a.hora}</div>
+        <div style="font-family:var(--font-cond);font-size:.78rem;color:var(--text-light);margin-top:1px;">🕐 ${limpiarHora(a.hora)}</div>
       </td>
     </tr>`;
   }).join('');
@@ -3182,7 +3297,7 @@ function exportCSV() {
     ...att.map(a=>{
       const h = hors.find(x=>x.id===(a.horarioId||''));
       const clase = h?h.nombre:(a.horarioNombre||'');
-      return [a.fecha, a.memberName, a.plan, clase ? clase+' '+a.hora : a.hora];
+      return [limpiarFecha(a.fecha), a.memberName, a.plan, clase ? clase+' '+limpiarHora(a.hora) : limpiarHora(a.hora)];
     })];
   const csv = rows.map(r=>r.join(',')).join('\n');
   const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
@@ -3310,7 +3425,7 @@ function loadMemberProfile() {
           <div style="display:flex;justify-content:space-between;align-items:center;padding:.65rem 1rem;border-bottom:1px solid var(--border);">
             <span style="font-size:.88rem;">${formatDateNice(a.fecha)}</span>
             <div style="text-align:right;">
-              <div style="font-family:var(--font-cond);color:var(--text-light);font-size:.82rem;">${a.hora}</div>
+              <div style="font-family:var(--font-cond);color:var(--text-light);font-size:.82rem;">${limpiarHora(a.hora)}</div>
               ${a.horarioNombre?`<div style="font-size:.68rem;color:var(--text-light);font-family:var(--font-cond);">${a.horarioNombre}${a.forzado?' · extra':''}</div>`:''}
             </div>
           </div>`).join('') || '<div class="no-data">Sin asistencias registradas</div>'}
@@ -3659,6 +3774,267 @@ function deleteInstructor(id) {
   renderInstructores();
   populateHInstructorSelect();
   toast('Instructor eliminado','warning');
+}
+
+
+// ════════════════════════════════════════════
+// REPORTE DE PAGOS
+// ════════════════════════════════════════════
+function renderReportePagos() {
+  const tipo  = document.getElementById('rpTipo')?.value || 'mes';
+  const anio  = document.getElementById('rpAnio')?.value || new Date().getFullYear();
+  const mes   = document.getElementById('rpMes')?.value || String(new Date().getMonth()+1).padStart(2,'0');
+  const fecha = document.getElementById('rpFechaDia')?.value || fmtDate(new Date());
+
+  // Mostrar/ocultar filtros
+  const diaWrap = document.getElementById('rpFechaDiaWrap');
+  const mesWrap = document.getElementById('rpMesWrap');
+  const anioWrap = document.getElementById('rpAnioWrap');
+  if (diaWrap)  diaWrap.style.display  = tipo==='dia' ? 'block' : 'none';
+  if (mesWrap)  mesWrap.style.display  = tipo==='mes' ? 'block' : 'none';
+  if (anioWrap) anioWrap.style.display = tipo==='mes' ? 'block' : 'none';
+
+  const payments = DB.get('payments',[]);
+  let filtered;
+  if (tipo === 'dia') {
+    filtered = payments.filter(p => limpiarFecha(p.fechaPago) === fecha);
+  } else {
+    const prefix = `${anio}-${mes}`;
+    filtered = payments.filter(p => limpiarFecha(p.fechaPago).startsWith(prefix));
+  }
+
+  // KPIs
+  const total = filtered.reduce((s,p) => s+Number(p.monto), 0);
+  const kpis = document.getElementById('rpKpis');
+  if (kpis) kpis.innerHTML = `
+    <div class="kpi-card green"><div class="kpi-label">TOTAL INGRESOS</div><div class="kpi-value">$${total.toLocaleString('es-MX')}</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">PAGOS</div><div class="kpi-value">${filtered.length}</div></div>
+    <div class="kpi-card yellow"><div class="kpi-label">EFECTIVO</div><div class="kpi-value">$${filtered.filter(p=>p.metodo==='efectivo').reduce((s,p)=>s+Number(p.monto),0).toLocaleString('es-MX')}</div></div>
+    <div class="kpi-card"><div class="kpi-label">TRANSFERENCIA</div><div class="kpi-value">$${filtered.filter(p=>p.metodo==='transferencia').reduce((s,p)=>s+Number(p.monto),0).toLocaleString('es-MX')}</div></div>
+  `;
+
+  const title = document.getElementById('rpTableTitle');
+  if (title) title.textContent = tipo==='dia' ? `PAGOS DEL ${formatDateNice(fecha)}` : `PAGOS DE ${['','ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'][Number(mes)]} ${anio}`;
+
+  const tbody = document.getElementById('rpTabla');
+  if (!tbody) return;
+  if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="no-data">Sin pagos en este período</div></td></tr>`; return; }
+  const icons = { efectivo:'💵', transferencia:'🏦', tarjeta:'💳' };
+  tbody.innerHTML = filtered.sort((a,b)=>limpiarFecha(a.fechaPago).localeCompare(limpiarFecha(b.fechaPago))).map(p=>`
+    <tr>
+      <td style="font-size:.82rem;color:var(--text-light);">${formatDateNice(p.fechaPago)}</td>
+      <td>${p.memberName}</td>
+      <td>${planBadge(p.plan)}</td>
+      <td style="font-family:var(--font-display);font-size:1.1rem;">$${Number(p.monto).toLocaleString()}</td>
+      <td>${icons[p.metodo]||'💵'} ${p.metodo}</td>
+    </tr>`).join('');
+}
+
+function exportReportePagosCSV() {
+  const tbody = document.getElementById('rpTabla');
+  const title = document.getElementById('rpTableTitle')?.textContent || 'Reporte Pagos';
+  const rows  = [['Fecha','Miembro','Plan','Monto','Método']];
+  document.querySelectorAll('#rpTabla tr').forEach(tr => {
+    const tds = tr.querySelectorAll('td');
+    if (tds.length >= 5) rows.push([tds[0].textContent, tds[1].textContent, tds[2].textContent, tds[3].textContent, tds[4].textContent]);
+  });
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('
+');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿'+csv);
+  a.download = title.replace(/\s+/g,'_')+'.csv';
+  a.click();
+}
+
+// ════════════════════════════════════════════
+// REPORTE DE ASISTENCIA
+// ════════════════════════════════════════════
+function renderReporteAsistencia() {
+  const tipo  = document.getElementById('raTipo')?.value || 'mes';
+  const anio  = document.getElementById('raAnio')?.value || new Date().getFullYear();
+  const mes   = document.getElementById('raMes')?.value || String(new Date().getMonth()+1).padStart(2,'0');
+  const fecha = document.getElementById('raFechaDia')?.value || fmtDate(new Date());
+
+  const diaWrap = document.getElementById('raFechaDiaWrap');
+  const mesWrap = document.getElementById('raMesWrap');
+  const anioWrap = document.getElementById('raAnioWrap');
+  if (diaWrap)  diaWrap.style.display  = tipo==='dia' ? 'block' : 'none';
+  if (mesWrap)  mesWrap.style.display  = tipo==='mes' ? 'block' : 'none';
+  if (anioWrap) anioWrap.style.display = tipo==='mes' ? 'block' : 'none';
+
+  const att = DB.get('attendance',[]);
+  let filtered;
+  if (tipo === 'dia') {
+    filtered = att.filter(a => limpiarFecha(a.fecha) === fecha);
+  } else {
+    const prefix = `${anio}-${mes}`;
+    filtered = att.filter(a => limpiarFecha(a.fecha).startsWith(prefix));
+  }
+
+  // KPIs
+  const unicos = [...new Set(filtered.map(a=>a.memberId))].length;
+  const kpis = document.getElementById('raKpis');
+  if (kpis) kpis.innerHTML = `
+    <div class="kpi-card green"><div class="kpi-label">TOTAL ASISTENCIAS</div><div class="kpi-value">${filtered.length}</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">MIEMBROS DISTINTOS</div><div class="kpi-value">${unicos}</div></div>
+  `;
+
+  const title = document.getElementById('raTableTitle');
+  if (title) title.textContent = tipo==='dia' ? `ASISTENCIAS DEL ${formatDateNice(fecha)}` : `ASISTENCIAS DE ${['','ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'][Number(mes)]} ${anio}`;
+
+  const tbody = document.getElementById('raTabla');
+  if (!tbody) return;
+  if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="no-data">Sin asistencias en este período</div></td></tr>`; return; }
+  tbody.innerHTML = filtered.sort((a,b)=>limpiarFecha(a.fecha).localeCompare(limpiarFecha(b.fecha))||limpiarHora(a.hora).localeCompare(limpiarHora(b.hora))).map(a=>`
+    <tr>
+      <td style="font-size:.82rem;color:var(--text-light);">${formatDateNice(a.fecha)}</td>
+      <td style="font-family:var(--font-cond);">${limpiarHora(a.hora)}</td>
+      <td><div style="display:flex;align-items:center;gap:.5rem;"><div class="member-avatar" style="width:26px;height:26px;font-size:.75rem;">${a.memberName[0]}</div>${a.memberName}</div></td>
+      <td>${planBadge(a.plan)}</td>
+      <td style="font-size:.82rem;">${a.horarioNombre||'—'}</td>
+    </tr>`).join('');
+}
+
+function exportReporteAsistenciaCSV() {
+  const title = document.getElementById('raTableTitle')?.textContent || 'Reporte Asistencia';
+  const rows  = [['Fecha','Hora','Miembro','Plan','Clase']];
+  document.querySelectorAll('#raTabla tr').forEach(tr => {
+    const tds = tr.querySelectorAll('td');
+    if (tds.length >= 5) rows.push([tds[0].textContent, tds[1].textContent, tds[2].textContent.trim(), tds[3].textContent, tds[4].textContent]);
+  });
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('
+');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿'+csv);
+  a.download = title.replace(/\s+/g,'_')+'.csv';
+  a.click();
+}
+
+// Inicializar fechas al cargar reportes
+function initReporteFechas() {
+  const hoy = fmtDate(new Date());
+  const mes  = String(new Date().getMonth()+1).padStart(2,'0');
+  const anio = new Date().getFullYear();
+  const rpFecha = document.getElementById('rpFechaDia'); if(rpFecha) rpFecha.value = hoy;
+  const raFecha = document.getElementById('raFechaDia'); if(raFecha) raFecha.value = hoy;
+  const rpMes = document.getElementById('rpMes'); if(rpMes) rpMes.value = mes;
+  const raMes = document.getElementById('raMes'); if(raMes) raMes.value = mes;
+  const rpAnio = document.getElementById('rpAnio'); if(rpAnio) rpAnio.value = anio;
+  const raAnio = document.getElementById('raAnio'); if(raAnio) raAnio.value = anio;
+}
+
+
+// ════════════════════════════════════════════
+// PDF REPORTES
+// ════════════════════════════════════════════
+function buildReportePDF(titulo, subtitulo, headers, rows, frase) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const rojo  = [227,0,15];
+  const gris  = [120,120,120];
+  const negro = [30,30,30];
+  const bg    = [244,245,247];
+  const fechaHoy = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+
+  // Header rojo con logo
+  doc.setFillColor(...rojo);
+  doc.rect(0, 0, 210, 38, 'F');
+  const logoEl = document.querySelector('img[alt="JOMAC"]');
+  if (logoEl && logoEl.src.startsWith('data:')) {
+    try { doc.addImage(logoEl.src, 'PNG', 10, 4, 40, 30); } catch(e) {}
+  }
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14); doc.setTextColor(255,255,255);
+  doc.text('JOMAC ENTRENAMIENTO FUNCIONAL', 56, 14);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(titulo.toUpperCase(), 56, 21);
+  doc.text(subtitulo, 56, 27);
+  doc.text('Fecha: ' + fechaHoy, 56, 33);
+
+  // Tabla
+  let y = 50;
+  const colW = Math.floor(186 / headers.length);
+  const cols = headers.map((_,i) => 12 + i*colW);
+
+  doc.setFillColor(...bg);
+  doc.rect(12, y-5, 186, 8, 'F');
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(...gris);
+  headers.forEach((h,i) => doc.text(h, cols[i], y));
+  y += 4;
+  doc.setDrawColor(...bg); doc.line(12, y, 198, y); y += 4;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  rows.forEach((row, idx) => {
+    if (idx%2===0) { doc.setFillColor(252,252,252); doc.rect(12,y-4,186,7,'F'); }
+    doc.setTextColor(...negro);
+    row.forEach((cell,i) => {
+      const txt = String(cell||'').substring(0,28);
+      doc.text(txt, cols[i], y);
+    });
+    y += 8;
+    if (y > 220) {
+      // Pie motivacional en página actual
+      agregarPiePDF(doc, frase, fechaHoy, rows.length);
+      doc.addPage(); y = 20;
+    }
+  });
+
+  // Pie motivacional
+  agregarPiePDF(doc, frase, fechaHoy, rows.length);
+
+  const pdfBlob = doc.output('blob');
+  const pdfUrl  = URL.createObjectURL(pdfBlob);
+  const a = document.createElement('a');
+  a.href = pdfUrl;
+  a.download = titulo.replace(/\s+/g,'_') + '.pdf';
+  a.click();
+}
+
+function agregarPiePDF(doc, frase, fechaHoy, total) {
+  const y = 240;
+  doc.setFillColor(253,247,235);
+  doc.roundedRect(12, y, 186, 22, 3, 3, 'F');
+  doc.setDrawColor(227,0,15); doc.setLineWidth(0.5);
+  doc.line(12, y, 12, y+22);
+  doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(227,0,15);
+  doc.text(frase[0], 18, y+8);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
+  doc.text(frase[1], 18, y+14);
+  doc.setFontSize(7); doc.setTextColor(120,120,120);
+  doc.text('JOMAC Gym Manager  *  ' + fechaHoy, 14, 287);
+  doc.text('Total: ' + total + ' registros', 185, 287, { align:'right' });
+}
+
+function exportReportePagosPDF() {
+  const title = document.getElementById('rpTableTitle')?.textContent || 'Reporte Pagos';
+  const rows = [];
+  document.querySelectorAll('#rpTabla tr').forEach(tr => {
+    const tds = tr.querySelectorAll('td');
+    if (tds.length >= 5) rows.push([tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(), tds[3].textContent.trim(), tds[4].textContent.trim()]);
+  });
+  if (!rows.length) { toast('Sin datos para exportar','warning'); return; }
+  buildReportePDF(
+    title, 'REPORTE DE INGRESOS',
+    ['FECHA','MIEMBRO','PLAN','MONTO','METODO'],
+    rows,
+    ['Tu esfuerzo construye el mejor gimnasio.', 'Cada pago es un paso hacia la mejor version de tu miembro. — JOMAC']
+  );
+}
+
+function exportReporteAsistenciaPDF() {
+  const title = document.getElementById('raTableTitle')?.textContent || 'Reporte Asistencia';
+  const rows = [];
+  document.querySelectorAll('#raTabla tr').forEach(tr => {
+    const tds = tr.querySelectorAll('td');
+    if (tds.length >= 5) rows.push([tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(), tds[3].textContent.trim(), tds[4].textContent.trim()]);
+  });
+  if (!rows.length) { toast('Sin datos para exportar','warning'); return; }
+  buildReportePDF(
+    title, 'REPORTE DE ASISTENCIAS',
+    ['FECHA','HORA','MIEMBRO','PLAN','CLASE'],
+    rows,
+    ['La constancia es la clave del exito.', 'Cada visita cuenta — gracias por entrenar en JOMAC. — JOMAC']
+  );
 }
 
 function renderInstructores() {
