@@ -2823,11 +2823,42 @@ function processCheckin() {
   }
 
   const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+
+  // Detectar horario activo por hora actual — no el asignado en perfil
+  const horaActual = new Date();
+  const horaH = horaActual.getHours();
+  const horaM = horaActual.getMinutes();
+  const horaMinutos = horaH * 60 + horaM;
+  const diaActual = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][horaActual.getDay()];
+  const todosHorarios = DB.get('horarios',[]).filter(h => h.activo !== false);
+  
+  let horarioDetectado = null;
+  for (const h of todosHorarios) {
+    const ini = limpiarHora(h.horaInicio);
+    const fin = limpiarHora(h.horaFin);
+    const [ih, im] = ini.split(':').map(Number);
+    const [fh, fm] = fin.split(':').map(Number);
+    const iniMin = ih * 60 + im;
+    const finMin = fh * 60 + fm;
+    const diasH = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
+    const diaOk = diasH.some(d => d.trim().toUpperCase() === diaActual);
+    // Detectar si hora actual está dentro ±30 min del horario
+    if (diaOk && horaMinutos >= iniMin - 30 && horaMinutos <= finMin + 30) {
+      horarioDetectado = h;
+      break;
+    }
+  }
+
+  // Si no detectó por hora, usar el asignado en perfil como fallback
+  if (!horarioDetectado && m.horarioId) {
+    horarioDetectado = todosHorarios.find(h => h.id === m.horarioId) || null;
+  }
+
   const reg  = {
     id:'A'+Date.now(), memberId:m.id, memberName:m.nombre,
     plan:pago.plan, fecha:today, hora,
-    horarioId: m.horarioId||null,
-    horarioNombre: hs ? hs.horario.nombre : null
+    horarioId:     horarioDetectado ? horarioDetectado.id    : null,
+    horarioNombre: horarioDetectado ? horarioDetectado.nombre : null
   };
   att.push(reg);
   DB.set('attendance', att);
