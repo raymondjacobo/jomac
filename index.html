@@ -2849,9 +2849,11 @@ function processCheckin() {
     }
   }
 
-  // Si no detectó por hora, usar el asignado en perfil como fallback
-  if (!horarioDetectado && m.horarioId) {
-    horarioDetectado = todosHorarios.find(h => h.id === m.horarioId) || null;
+  // Si no detectó horario activo, bloquear check-in
+  if (!horarioDetectado) {
+    result.innerHTML = `<div class="alert alert-error">❌ No hay clase activa en este momento.<br><small style="font-size:.75rem;">Verifica el horario con tu instructor.</small></div>`;
+    setTimeout(checkinClear, 3500);
+    return;
   }
 
   const reg  = {
