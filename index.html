@@ -1702,7 +1702,13 @@ async function restaurarAlIniciar() {
     }
     if (d.instructores) DB.set('instructores',  d.instructores);
     if (d.config)       DB.set('config',        d.config);
-    if (loginBrand) loginBrand.textContent = '¡Datos listos! Inicia sesión.';
+    if (loginBrand) {
+      loginBrand.textContent = '✔ ¡Datos listos! Inicia sesión.';
+      loginBrand.style.color = '#fff';
+      loginBrand.style.fontWeight = '700';
+    }
+    // Pequeño delay para que se vea el mensaje
+    await new Promise(r => setTimeout(r, 1500));
   } catch(e) {
     if (loginBrand) loginBrand.textContent = 'Sin conexión — datos locales.';
     // Inicializar vacío para que no vuelva a intentar
