@@ -3644,6 +3644,20 @@ function deleteHorario(id) {
   toast('Horario eliminado','warning');
 }
 
+
+// Convierte hora de Sheets (puede venir como fecha completa) a HH:MM
+function limpiarHora(valor) {
+  if (!valor) return '';
+  const s = String(valor);
+  // Si viene como fecha ISO: 1899-12-30T12:35:40.000Z
+  if (s.includes('T')) {
+    const partes = s.split('T')[1].split(':');
+    return partes[0] + ':' + partes[1];
+  }
+  // Si ya viene como HH:MM o H:MM
+  return s.substring(0,5);
+}
+
 function renderHorarios() {
   const horarios = DB.get('horarios', []).filter(h=>h.activo);
   const filtro   = document.getElementById('filtroHorarioDia')?.value||'';
@@ -3670,7 +3684,7 @@ function renderHorarios() {
             ${porHora[hora].map(h => `
               <div onclick="openHorarioModal('${h.id}')" style="background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:2px;padding:.6rem .9rem;cursor:pointer;transition:all .2s;min-width:160px;max-width:240px;" onmouseover="this.style.borderLeftColor='#fff'" onmouseout="this.style.borderLeftColor='var(--red)'">
                 <div style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;letter-spacing:1px;">${h.nombre}</div>
-                <div style="font-size:.75rem;color:var(--text-light);margin-top:2px;">${h.horaInicio} – ${h.horaFin}</div>
+                <div style="font-size:.75rem;color:var(--text-light);margin-top:2px;">${limpiarHora(h.horaInicio)} – ${limpiarHora(h.horaFin)}</div>
                 <div style="margin-top:.4rem;display:flex;gap:.3rem;flex-wrap:wrap;">
                   ${h.dias.map(d=>`<span style="font-size:.6rem;background:var(--gray-dark);padding:1px 5px;border-radius:1px;font-family:var(--font-cond);letter-spacing:1px;">${d.slice(0,3).toUpperCase()}</span>`).join('')}
                 </div>
@@ -3719,7 +3733,7 @@ function populateMnHorarioSelect() {
   if (!sel) return;
   const horarios = DB.get('horarios', []).filter(h=>h.activo);
   sel.innerHTML = '<option value="">— Sin horario asignado —</option>' +
-    horarios.map(h => `<option value="${h.id}">${h.nombre} (${h.horaInicio}–${h.horaFin}) · ${h.dias.map(d=>d.slice(0,3)).join(', ')}</option>`).join('');
+    horarios.map(h => `<option value="${h.id}">${h.nombre} (${limpiarHora(h.horaInicio)}–${limpiarHora(h.horaFin)}) · ${h.dias.map(d=>d.slice(0,3)).join(', ')}</option>`).join('');
 }
 
 // ── Check-in: validación de horario ──
