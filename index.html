@@ -1345,7 +1345,7 @@
           </div>
         </div>
         <table>
-          <thead><tr><th>FECHA</th><th>HORA</th><th>MIEMBRO</th><th>PLAN</th><th>CLASE</th></tr></thead>
+          <thead><tr><th>FECHA</th><th>HORA</th><th>MIEMBRO</th><th>PLAN</th><th>CLASE</th><th>ASISTENCIAS</th></tr></thead>
           <tbody id="raTabla"></tbody>
         </table>
       </div>
@@ -1817,8 +1817,11 @@ async function restaurarAlIniciar() {
   const gasUrl = GAS_URL;
   if (!gasUrl) return;
 
-  // Mostrar mensaje en panel izquierdo (no ocultar el formulario)
   const loginBrand = document.querySelector('.login-brand-desc');
+  const loginRight = document.querySelector('.login-panel-right');
+
+  // Ocultar formulario y mostrar mensaje
+  if (loginRight) { loginRight.style.visibility = 'hidden'; loginRight.style.pointerEvents = 'none'; }
   if (loginBrand) {
     loginBrand.style.color = '#FFD700';
     loginBrand.style.fontWeight = '700';
@@ -1856,14 +1859,13 @@ async function restaurarAlIniciar() {
     console.error('restaurarAlIniciar error:', e);
     if (loginBrand) loginBrand.textContent = 'Tu gimnasio, tu disciplina.';
   } finally {
-    // Restaurar texto original después de 2 segundos
-    setTimeout(() => {
-      if (loginBrand) {
-        loginBrand.textContent = 'Tu gimnasio, tu disciplina.';
-        loginBrand.style.color = '';
-        loginBrand.style.fontWeight = '';
-      }
-    }, 2000);
+    // Mostrar formulario
+    if (loginRight) { loginRight.style.visibility = ''; loginRight.style.pointerEvents = ''; }
+    if (loginBrand) {
+      loginBrand.textContent = 'Tu gimnasio, tu disciplina.';
+      loginBrand.style.color = '';
+      loginBrand.style.fontWeight = '';
+    }
   }
 }
 
@@ -3873,10 +3875,15 @@ function renderReporteAsistencia() {
 
   // KPIs
   const unicos = [...new Set(filtered.map(a=>a.memberId))].length;
+  // Miembro más frecuente
+  const freq = {};
+  filtered.forEach(a => { freq[a.memberName] = (freq[a.memberName]||0)+1; });
+  const topMember = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
   const kpis = document.getElementById('raKpis');
   if (kpis) kpis.innerHTML = `
     <div class="kpi-card green"><div class="kpi-label">TOTAL ASISTENCIAS</div><div class="kpi-value">${filtered.length}</div></div>
     <div class="kpi-card blue"><div class="kpi-label">MIEMBROS DISTINTOS</div><div class="kpi-value">${unicos}</div></div>
+    ${topMember ? `<div class="kpi-card yellow"><div class="kpi-label">MÁS FRECUENTE</div><div class="kpi-value" style="font-size:1rem;">${topMember[0].split(' ')[0]}</div><div class="kpi-sub">${topMember[1]} visitas</div></div>` : ''}
   `;
 
   const title = document.getElementById('raTableTitle');
@@ -3892,6 +3899,7 @@ function renderReporteAsistencia() {
       <td><div style="display:flex;align-items:center;gap:.5rem;"><div class="member-avatar" style="width:26px;height:26px;font-size:.75rem;">${a.memberName[0]}</div>${a.memberName}</div></td>
       <td>${planBadge(a.plan)}</td>
       <td style="font-size:.82rem;">${a.horarioNombre||'—'}</td>
+      <td style="font-family:var(--font-display);font-size:1rem;color:var(--red);text-align:center;">${freq[a.memberName]||1}</td>
     </tr>`).join('');
 }
 
