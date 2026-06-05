@@ -1677,6 +1677,13 @@ function initDB() {
   restaurarAlIniciar();
 }
 
+
+// Normaliza fecha de Sheets (puede venir como ISO completo) a YYYY-MM-DD
+function limpiarFecha(valor) {
+  if (!valor) return '';
+  return String(valor).substring(0, 10);
+}
+
 // Convierte hora de Sheets (puede venir como fecha completa) a HH:MM
 function limpiarHora(valor) {
   if (!valor) return '';
@@ -1996,11 +2003,11 @@ function loadDashboard() {
   const attendance = DB.get('attendance', []);
 
   const activos = members.filter(m => m.activo).length;
-  const attHoy  = attendance.filter(a => a.fecha === today);
-  const ingrHoy = payments.filter(p => p.fechaPago === today).reduce((s,p) => s+Number(p.monto), 0);
+  const attHoy  = attendance.filter(a => limpiarFecha(a.fecha) === today);
+  const ingrHoy = payments.filter(p => limpiarFecha(p.fechaPago) === today).reduce((s,p) => s+Number(p.monto), 0);
   const proxDays= new Date(); proxDays.setDate(proxDays.getDate()+3);
   const vencen  = payments.filter(p => {
-    const fin = new Date(p.fechaFin+'T00:00:00');
+    const fin = new Date(String(p.fechaFin).substring(0,10)+'T00:00:00');
     const now = new Date(); now.setHours(0,0,0,0);
     return fin >= now && fin <= proxDays && p.activo;
   }).length;
@@ -2028,11 +2035,11 @@ function loadDashboard() {
   // Expiring
   const expBody = document.getElementById('expiringTable');
   const exp = payments.filter(p => {
-    const fin = new Date(p.fechaFin+'T00:00:00');
+    const fin = new Date(String(p.fechaFin).substring(0,10)+'T00:00:00');
     const now = new Date(); now.setHours(0,0,0,0);
     const diff = Math.ceil((fin-now)/(1000*60*60*24));
     return diff >= 0 && diff <= 7 && p.activo;
-  }).sort((a,b)=>new Date(a.fechaFin)-new Date(b.fechaFin));
+  }).sort((a,b)=>new Date(limpiarFecha(a.fechaFin))-new Date(limpiarFecha(b.fechaFin)));
   expBody.innerHTML = exp.length ? exp.map(p => {
     const diff = Math.ceil((new Date(p.fechaFin+'T00:00:00') - new Date().setHours(0,0,0,0))/(1000*60*60*24));
     const cls  = diff <= 1 ? 'badge-red' : diff <= 3 ? 'badge-yellow' : 'badge-green';
@@ -2088,10 +2095,10 @@ function exportVencimientosPDF() {
   const payments = DB.get('payments', []);
   const now = new Date(); now.setHours(0,0,0,0);
   const exp = payments.filter(p => {
-    const fin = new Date(p.fechaFin+'T00:00:00');
+    const fin = new Date(String(p.fechaFin).substring(0,10)+'T00:00:00');
     const diff = Math.ceil((fin - now) / (1000*60*60*24));
     return diff >= 0 && diff <= 7 && p.activo;
-  }).sort((a,b) => new Date(a.fechaFin) - new Date(b.fechaFin));
+  }).sort((a,b) => new Date(limpiarFecha(a.fechaFin)) - new Date(limpiarFecha(b.fechaFin)));
 
   if (!exp.length) { toast('No hay vencimientos próximos','warning'); return; }
 
@@ -2271,7 +2278,7 @@ function compartirPorWhatsApp() {
   let msg = '⏰ *VENCIMIENTOS PRÓXIMOS — JOMAC*\n';
   msg += '─────────────────────\n';
   exp.forEach(p => {
-    const fin = new Date(p.fechaFin+'T00:00:00');
+    const fin = new Date(String(p.fechaFin).substring(0,10)+'T00:00:00');
     const diff = Math.ceil((fin - new Date().setHours(0,0,0,0)) / (1000*60*60*24));
     const label = diff === 0 ? '🔴 *HOY*' : diff <= 3 ? `🟡 ${diff} día(s)` : `🟢 ${diff} días`;
     msg += `\n👤 *${p.memberName}*\n   Plan: ${p.plan.toUpperCase()} • Vence: ${formatDateNice(p.fechaFin)}\n   ${label}\n`;
@@ -2765,8 +2772,8 @@ function loadPagoKPIs() {
   const today    = fmtDate(new Date());
   const thisMonth= today.slice(0,7);
   const payments = DB.get('payments', []);
-  const hoy  = payments.filter(p=>p.fechaPago===today).reduce((s,p)=>s+Number(p.monto),0);
-  const mes  = payments.filter(p=>p.fechaPago.startsWith(thisMonth)).reduce((s,p)=>s+Number(p.monto),0);
+  const hoy  = payments.filter(p=>limpiarFecha(p.fechaPago)===today).reduce((s,p)=>s+Number(p.monto),0);
+  const mes  = payments.filter(p=>limpiarFecha(p.fechaPago).substring(0,7)===thisMonth).reduce((s,p)=>s+Number(p.monto),0);
   document.getElementById('kpiPagosHoy').textContent  = '$'+hoy.toLocaleString();
   document.getElementById('kpiPagosMes').textContent  = '$'+mes.toLocaleString();
   document.getElementById('kpiPagosTotal').textContent= payments.length;
@@ -2802,7 +2809,7 @@ function processCheckin() {
   // Duplicate check (same day)
   const today = fmtDate(new Date());
   const att   = DB.get('attendance', []);
-  const ya    = att.find(a => a.memberId===m.id && a.fecha===today);
+  const ya    = att.find(a => String(a.memberId)===String(m.id) && limpiarFecha(a.fecha)===today);
   if (ya) {
     result.innerHTML = `<div class="alert alert-info">ℹ ${m.nombre} ya registró entrada hoy a las ${ya.hora}</div>`;
     setTimeout(checkinClear, 2500);
@@ -2877,7 +2884,7 @@ function patchAttendanceHorarios() {
   const att     = DB.get('attendance',[]);
   let changed   = false;
   att.forEach(a => {
-    if (a.fecha !== today) return;
+    if (limpiarFecha(a.fecha) !== today) return;
     if (a.horarioId) return; // ya tiene horario
     const m = members.find(x => x.id === a.memberId);
     if (!m || !m.horarioId) return;
@@ -3117,7 +3124,7 @@ function renderAsistencia() {
   const fecha = document.getElementById('filterFecha')?.value || '';
   const q     = (document.getElementById('searchAsist')?.value||'').toLowerCase();
   let att     = DB.get('attendance', []);
-  if (fecha)  att = att.filter(a=>a.fecha===fecha);
+  if (fecha)  att = att.filter(a=>limpiarFecha(a.fecha)===fecha);
   if (q)      att = att.filter(a=>a.memberName.toLowerCase().includes(q));
   att = [...att].reverse();
   const tbody = document.getElementById('tablaAsistencia');
