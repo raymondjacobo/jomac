@@ -2759,13 +2759,33 @@ function renderPagos() {
       <td style="font-family:var(--font-display);font-size:1.1rem;">$${Number(p.monto).toLocaleString()}</td>
       <td><span class="pay-icon">${icons[p.metodo]||'💵'} ${p.metodo}</span></td>
       <td><span class="badge ${cls}">${est}</span></td>
-      <td><button onclick="mostrarReciboModal(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="
-        background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:2px;
-        color:var(--text-light);cursor:pointer;padding:.3rem .6rem;font-size:.75rem;
-        font-family:var(--font-cond);letter-spacing:1px;white-space:nowrap;"
-        title="Ver comprobante">🧾 RECIBO</button></td>
+      <td style="display:flex;gap:.4rem;align-items:center;">
+        <button onclick="mostrarReciboModal(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="
+          background:transparent;border:1px solid var(--border);border-radius:4px;
+          color:var(--text-light);cursor:pointer;padding:.3rem .6rem;font-size:.75rem;
+          font-family:var(--font-cond);letter-spacing:1px;white-space:nowrap;"
+          title="Ver comprobante">🧾 RECIBO</button>
+        ${currentUser && currentUser.type==='admin' ? `<button onclick="deletePago('${p.id}')" style="
+          background:transparent;border:1px solid #FECACA;border-radius:4px;
+          color:var(--red);cursor:pointer;padding:.3rem .5rem;font-size:.75rem;"
+          title="Eliminar pago">🗑</button>` : ''}
+      </td>
     </tr>`;
   }).join('');
+}
+
+
+function deletePago(id) {
+  if (!confirm('¿Eliminar este pago? Esta acción no se puede deshacer.')) return;
+  const payments = DB.get('payments', []);
+  const idx = payments.findIndex(p => p.id === id);
+  if (idx < 0) return;
+  payments.splice(idx, 1);
+  DB.set('payments', payments);
+  syncGoogleSheets(true);
+  renderPagos();
+  loadPagoKPIs();
+  toast('Pago eliminado', 'warning');
 }
 
 function loadPagoKPIs() {
