@@ -3544,8 +3544,15 @@ async function syncGoogleSheets(silencioso=false) {
   const members      = DB.get('members',[]);
   const payments     = DB.get('payments',[]);
   const attendance   = DB.get('attendance',[]);
-  const horarios     = DB.get('horarios',[]);
   const instructores = DB.get('instructores',[]);
+  // Limpiar horas antes de subir a Sheets
+  const horarios = DB.get('horarios',[]).map(h => ({
+    ...h,
+    horaInicio: limpiarHora(h.horaInicio),
+    horaFin:    limpiarHora(h.horaFin)
+  }));
+  // Guardar versión limpia en localStorage también
+  DB.set('horarios', horarios);
   try {
     const r = await fetch(gasUrl, {
       method: 'POST',
