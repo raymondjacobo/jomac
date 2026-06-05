@@ -2760,11 +2760,7 @@ function processCheckin() {
   }
   const pago = getActivePago(m.id);
   if (!pago) {
-    const payments = DB.get('payments',[]);
-    const misPagos = payments.filter(p => String(p.memberId)===String(m.id));
-    const p0 = misPagos[0];
-    const debug = p0 ? `activo:${p0.activo}(${typeof p0.activo}) fechaFin:${p0.fechaFin}` : 'sin pagos';
-    result.innerHTML = `<div class="alert alert-warn">⚠ ${m.nombre} — SIN MEMBRESÍA ACTIVA<br><small>${debug}</small></div>`;
+    result.innerHTML = `<div class="alert alert-warn">⚠ ${m.nombre} — SIN MEMBRESÍA ACTIVA</div>`;
     setTimeout(checkinClear, 4000);
     return;
   }
@@ -3412,10 +3408,12 @@ function getActivePago(memberId) {
     .filter(p => {
       const mismoMiembro = String(p.memberId) === String(memberId);
       const activo = p.activo === true || p.activo === 'true' || p.activo === 1;
-      const vigente = p.fechaFin && new Date(String(p.fechaFin)+'T00:00:00') >= today;
+      // Manejar fechaFin con o sin hora (2026-07-03 o 2026-07-03T07:00:00.000Z)
+      const fechaStr = p.fechaFin ? String(p.fechaFin).substring(0,10) : null;
+      const vigente  = fechaStr && new Date(fechaStr+'T00:00:00') >= today;
       return mismoMiembro && activo && vigente;
     })
-    .sort((a,b)=>new Date(b.fechaFin)-new Date(a.fechaFin))[0] || null;
+    .sort((a,b)=>new Date(String(b.fechaFin).substring(0,10))-new Date(String(a.fechaFin).substring(0,10)))[0] || null;
 }
 function toast(msg, type='') {
   const t = document.getElementById('toast');
