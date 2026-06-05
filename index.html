@@ -3405,7 +3405,12 @@ function getActivePago(memberId) {
   const payments = DB.get('payments', []);
   const today    = new Date(); today.setHours(0,0,0,0);
   return payments
-    .filter(p => p.memberId===memberId && new Date(p.fechaFin+'T00:00:00') >= today)
+    .filter(p => {
+      const mismoMiembro = String(p.memberId) === String(memberId);
+      const activo = p.activo === true || p.activo === 'true' || p.activo === 1;
+      const vigente = p.fechaFin && new Date(String(p.fechaFin)+'T00:00:00') >= today;
+      return mismoMiembro && activo && vigente;
+    })
     .sort((a,b)=>new Date(b.fechaFin)-new Date(a.fechaFin))[0] || null;
 }
 function toast(msg, type='') {
