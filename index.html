@@ -3839,8 +3839,7 @@ function exportReportePagosCSV() {
     const tds = tr.querySelectorAll('td');
     if (tds.length >= 5) rows.push([tds[0].textContent, tds[1].textContent, tds[2].textContent, tds[3].textContent, tds[4].textContent]);
   });
-  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('
-');
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿'+csv);
   a.download = title.replace(/\s+/g,'_')+'.csv';
@@ -3903,8 +3902,7 @@ function exportReporteAsistenciaCSV() {
     const tds = tr.querySelectorAll('td');
     if (tds.length >= 5) rows.push([tds[0].textContent, tds[1].textContent, tds[2].textContent.trim(), tds[3].textContent, tds[4].textContent]);
   });
-  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('
-');
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿'+csv);
   a.download = title.replace(/\s+/g,'_')+'.csv';
