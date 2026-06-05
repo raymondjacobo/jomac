@@ -1694,7 +1694,9 @@ async function restaurarAlIniciar() {
     if (d.horarios) {
       d.horarios = d.horarios.map(h => ({
         ...h,
-        dias: typeof h.dias === 'string' ? h.dias.split(',').filter(Boolean) : (h.dias || [])
+        dias: typeof h.dias === 'string' ? h.dias.split(',').filter(Boolean) : (h.dias || []),
+        horaInicio: limpiarHora(h.horaInicio),
+        horaFin:    limpiarHora(h.horaFin)
       }));
       DB.set('horarios', d.horarios);
     }
