@@ -2760,8 +2760,10 @@ function processCheckin() {
   }
   const pago = getActivePago(m.id);
   if (!pago) {
-    result.innerHTML = `<div class="alert alert-warn">⚠ ${m.nombre} — SIN MEMBRESÍA ACTIVA</div>`;
-    setTimeout(checkinClear, 2500);
+    const payments = DB.get('payments',[]);
+    const misPagos = payments.filter(p => String(p.memberId)===String(m.id));
+    result.innerHTML = `<div class="alert alert-warn">⚠ ${m.nombre} — SIN MEMBRESÍA ACTIVA<br><small>Pagos encontrados: ${misPagos.length} | ID: ${m.id}</small></div>`;
+    setTimeout(checkinClear, 4000);
     return;
   }
   // Duplicate check (same day)
