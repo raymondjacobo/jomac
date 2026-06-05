@@ -1816,26 +1816,18 @@ function limpiarHora(valor) {
 async function restaurarAlIniciar() {
   const gasUrl = GAS_URL;
   if (!gasUrl) return;
-  // Pequeño delay para que el DOM esté completamente renderizado
-  await new Promise(r => setTimeout(r, 100));
-  // Mostrar indicador de carga en login
+
+  // Mostrar mensaje en panel izquierdo (no ocultar el formulario)
   const loginBrand = document.querySelector('.login-brand-desc');
-  const loginRight = document.querySelector('.login-panel-right');
-  
-  // Ocultar formulario mientras carga
-  if (loginRight) loginRight.style.display = 'none';
-  
   if (loginBrand) {
-    loginBrand.innerHTML = '<div style="text-align:center;"><div style="font-size:2rem;margin-bottom:.5rem;">⏳</div><div style="color:#FFD700;font-size:1rem;font-weight:700;letter-spacing:1px;">Sincronizando datos...</div><div style="color:rgba(255,255,255,.5);font-size:.8rem;margin-top:.3rem;">Por favor espera</div></div>';
+    loginBrand.style.color = '#FFD700';
+    loginBrand.style.fontWeight = '700';
+    loginBrand.textContent = '⏳ Sincronizando datos...';
   }
+
   try {
-    // Tiempo mínimo de 1.5s para que el usuario vea el mensaje
-    const [json] = await Promise.all([
-      fetch(gasUrl + '?action=getData', { credentials:'omit' })
-        .then(r => r.json())
-        .catch(() => null),
-      new Promise(r => setTimeout(r, 1500))
-    ]);
+    const r = await fetch(gasUrl + '?action=getData', { credentials:'omit' });
+    const json = await r.json();
 
     if (json && json.ok && json.data) {
       const d = json.data;
@@ -1853,22 +1845,25 @@ async function restaurarAlIniciar() {
       }
       if (d.instructores) DB.set('instructores',  d.instructores);
       if (d.config)       DB.set('config',        d.config);
-      if (loginBrand) loginBrand.innerHTML = '<div style="text-align:center;"><div style="font-size:1.5rem;margin-bottom:.3rem;">✅</div><div style="color:#7FFF00;font-size:.95rem;font-weight:700;letter-spacing:1px;">¡Datos listos!</div></div>';
+      if (loginBrand) {
+        loginBrand.style.color = '#7FFF00';
+        loginBrand.textContent = '✔ Datos actualizados';
+      }
     } else {
-      if (loginBrand) loginBrand.innerHTML = 'Tu gimnasio, tu disciplina.';
+      if (loginBrand) loginBrand.textContent = 'Tu gimnasio, tu disciplina.';
     }
-    await new Promise(r => setTimeout(r, 1000));
   } catch(e) {
     console.error('restaurarAlIniciar error:', e);
+    if (loginBrand) loginBrand.textContent = 'Tu gimnasio, tu disciplina.';
   } finally {
-    // SIEMPRE mostrar el formulario al terminar
-    if (loginRight) loginRight.style.display = '';
-    if (loginBrand) {
-      loginBrand.innerHTML = 'Tu gimnasio, tu disciplina.';
-      loginBrand.style.color = '';
-      loginBrand.style.fontSize = '';
-      loginBrand.style.fontWeight = '';
-    }
+    // Restaurar texto original después de 2 segundos
+    setTimeout(() => {
+      if (loginBrand) {
+        loginBrand.textContent = 'Tu gimnasio, tu disciplina.';
+        loginBrand.style.color = '';
+        loginBrand.style.fontWeight = '';
+      }
+    }, 2000);
   }
 }
 
