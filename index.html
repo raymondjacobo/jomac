@@ -1803,7 +1803,7 @@ function loginMember() {
   const err  = document.getElementById('memberError');
   if (!pin || !pass) { err.textContent = '⚠ INGRESA TU PIN Y CONTRASEÑA'; return; }
   const members = DB.get('members', []);
-  const m = members.find(x => x.pin === pin && x.activo);
+  const m = members.find(x => String(x.pin) === String(pin) && x.activo);
   if (!m) {
     err.textContent = '⚠ PIN NO ENCONTRADO';
     setTimeout(()=>err.textContent='', 2000);
@@ -2272,7 +2272,7 @@ function saveMiembro() {
   if (!nombre) { toast('Ingresa el nombre','error'); return; }
   if (!/^\d{6}$/.test(pin)) { toast('El PIN debe ser 6 dígitos numéricos','error'); return; }
   const members = DB.get('members', []);
-  const pinExists = members.find(m => m.pin === pin && m.id !== editingMemberId);
+  const pinExists = members.find(m => String(m.pin) === String(pin) && m.id !== editingMemberId);
   if (pinExists) { toast('Ese PIN ya está en uso','error'); return; }
 
   let savedId = editingMemberId;
@@ -2751,7 +2751,7 @@ function checkinClear() { checkinPin=''; updatePinDisplay(checkinPin,'cpd'); doc
 
 function processCheckin() {
   const members = DB.get('members', []);
-  const m = members.find(x => x.pin === checkinPin && x.activo);
+  const m = members.find(x => String(x.pin) === String(checkinPin) && x.activo);
   const result = document.getElementById('checkinResult');
   if (!m) {
     result.innerHTML = `<div class="alert alert-error">❌ PIN INCORRECTO. Intenta de nuevo.</div>`;
