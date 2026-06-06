@@ -4717,7 +4717,7 @@ function renderDashCumple() {
           </div>
           <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
             <span class="badge badge-red" style="font-size:.75rem;padding:4px 10px;white-space:nowrap;">🎉 HOY</span>
-            <button onclick="alert('click');enviarPostalDirecto('${m.id}')" style="background:#25D366;border:none;border-radius:6px;padding:.45rem .9rem;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;letter-spacing:1.5px;font-weight:700;cursor:pointer;z-index:10;position:relative;">📤 ENVIAR POSTAL</button>
+            <button onclick="enviarPostalDirecto('${m.id}')" style="background:#25D366;border:none;border-radius:6px;padding:.45rem .9rem;color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;letter-spacing:1.5px;font-weight:700;cursor:pointer;z-index:10;position:relative;pointer-events:auto;">📤 ENVIAR POSTAL</button>
           </div>
         </div>
       </div>`).join('');
@@ -4811,15 +4811,16 @@ function abrirPostalCumple(el) {
 function enviarPostalDirecto(memberId) {
   const members = DB.get('members',[]);
   const m = members.find(x => String(x.id) === String(memberId));
-  if (!m) { toast('No encontrado','error'); return; }
+  if (!m) { alert('no member'); toast('No encontrado','error'); return; }
   const hoy = new Date();
-  const parts = (limpiarFecha(m.fechaNac)||'2000-01-01').split('-').map(Number);
-  const edad = hoy.getFullYear() - parts[0] - ((hoy.getMonth()+1 < parts[1] || (hoy.getMonth()+1===parts[1] && hoy.getDate()<parts[2])) ? 1 : 0);
-  _cumpleNombreActual = m.nombre;
-  _cumpleEdadActual   = edad;
-  _cumpleTelActual    = (m.tel||'').replace(/[^0-9]/g,'');
-  openModal('modalCumpleanos');
-  setTimeout(function(){ generarPostalCumpleCanvas(m.nombre, edad); }, 200);
+    const parts = (limpiarFecha(m.fechaNac)||'2000-01-01').split('-').map(Number);
+    const edad = hoy.getFullYear() - parts[0] - ((hoy.getMonth()+1 < parts[1] || (hoy.getMonth()+1===parts[1] && hoy.getDate()<parts[2])) ? 1 : 0);
+    _cumpleNombreActual = m.nombre;
+    _cumpleEdadActual   = edad;
+    _cumpleTelActual    = String(m.tel||'').replace(/[^0-9]/g,'');
+      openModal('modalCumpleanos');
+    setTimeout(function(){ generarPostalCumpleCanvas(m.nombre, edad); }, 200);
+
 }
 
 function abrirPostalCumpleId(memberId) {
