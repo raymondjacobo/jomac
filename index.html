@@ -3932,15 +3932,13 @@ function renderCredencial(memberId) {
           <!-- Nombre y badge -->
           <div style="text-align:center;margin-bottom:.8rem;">
             <div style="color:#111;font-size:1rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;">${miembro.nombre}</div>
-            <div style="display:inline-block;margin-top:.3rem;background:#E3000F;border-radius:20px;padding:.15rem .8rem;color:#fff;font-size:.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">${miembro.esInstructor ? '🏋️ INSTRUCTOR' : '⚡ '+plan}</div>
+            ${miembro.esInstructor ? '<div style="display:inline-block;margin-top:.3rem;background:#E3000F;border-radius:20px;padding:.15rem .8rem;color:#fff;font-size:.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">🏋️ INSTRUCTOR</div>' : ''}
           </div>
 
           <!-- Campos -->
           ${[
             ['N° de Miembro', miembro.id],
             ['Miembro desde', formatDateNice(miembro.fechaReg)||'—'],
-            ['Vencimiento', vence],
-            ['Asistencias', totalAtt+' visitas 🔥'],
           ].map(([l,v]) => '<div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid #f0f0f0;"><span style="color:#888;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">'+l+'</span><span style="color:#111;font-size:.7rem;font-weight:700;">'+v+'</span></div>').join('')}
 
           <!-- Estado -->
