@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>JOMAC — Entrenamiento Funcional</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700;900&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet"/>
 <style>
   :root {
@@ -3856,7 +3857,22 @@ function renderCredencial(memberId) {
     miembro = members.find(m => String(m.id) === String(currentUser.data?.id));
     if (!miembro) miembro = members.find(m => m.nombre === currentUser.name);
   } else if (currentUser && currentUser.type === 'instructor') {
-    miembro = members.find(m => m.nombre === currentUser.name) || members[0];
+    // Instructor ve su propia credencial con datos del catálogo
+    const instructores = DB.get('instructores', []);
+    const inst = instructores.find(i => String(i.id) === String(currentUser.data?.id));
+    if (inst) {
+      // Construir objeto miembro-like con datos del instructor
+      miembro = {
+        id: inst.id,
+        nombre: inst.nombre,
+        fechaReg: inst.fechaReg || null,
+        planTipo: 'INSTRUCTOR',
+        esInstructor: true,
+        especialidad: inst.especialidad || 'Entrenamiento Funcional'
+      };
+    } else {
+      miembro = members[0];
+    }
   } else {
     miembro = members[0];
   }
@@ -3878,117 +3894,125 @@ function renderCredencial(memberId) {
   const inicial = miembro.nombre ? miembro.nombre[0].toUpperCase() : '?';
 
   el.innerHTML = `
-    <div style="perspective:1000px;width:320px;cursor:pointer;" onclick="this.querySelector('.cred-inner').style.transform = this.querySelector('.cred-inner').style.transform === 'rotateY(180deg)' ? 'rotateY(0deg)' : 'rotateY(180deg)'">
-      <div class="cred-inner" style="position:relative;width:320px;height:480px;transition:transform 0.6s;transform-style:preserve-3d;">
+    <div style="width:320px;font-family:'Segoe UI',Arial,sans-serif;cursor:pointer;" onclick="this.querySelector('.cf').style.display=this.querySelector('.cf').style.display==='none'?'block':'none';this.querySelector('.cb').style.display=this.querySelector('.cb').style.display==='none'?'block':'none';">
+      <div style="text-align:center;margin-bottom:.4rem;color:rgba(0,0,0,.3);font-size:.6rem;letter-spacing:.1em;">Toca para voltear</div>
 
-        <!-- ══ FRENTE ══ -->
-        <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:20px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.6);">
-          <!-- Fondo negro con líneas diagonales -->
-          <div style="background:#111;width:100%;height:100%;position:relative;overflow:hidden;">
-            <!-- Líneas diagonales rojo/gris como el diseño -->
-            <div style="position:absolute;top:-20px;left:-20px;width:180px;height:600px;background:linear-gradient(135deg,rgba(227,0,15,.5),rgba(80,80,80,.3));transform:rotate(-15deg);pointer-events:none;"></div>
-            <div style="position:absolute;top:-20px;left:10px;width:80px;height:600px;background:rgba(0,0,0,.4);transform:rotate(-15deg);pointer-events:none;"></div>
+      <!-- ══ FRENTE ══ -->
+      <div class="cf" style="border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.4);background:#0d0d0d;position:relative;">
 
-            <!-- Agujero superior -->
-            <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);width:40px;height:18px;border:3px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(0,0,0,.5);"></div>
+        <!-- Agujero -->
+        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:38px;height:16px;border:2.5px solid rgba(255,255,255,.15);border-radius:8px;background:#000;z-index:3;"></div>
 
-            <!-- Logo -->
-            <div style="text-align:center;padding:2.5rem 1rem 0;position:relative;">
-              ${logoSrc ? '<img src="'+logoSrc+'" style="height:80px;width:auto;display:block;margin:0 auto;filter:drop-shadow(0 4px 12px rgba(227,0,15,.4));"/>' : '<div style="color:#E3000F;font-size:2.5rem;font-weight:900;text-shadow:0 0 30px rgba(227,0,15,.6);">JOMAC</div>'}
-            </div>
+        <!-- Header negro con ola roja -->
+        <div style="position:relative;padding:3rem 1.2rem 0;text-align:center;background:#0d0d0d;overflow:hidden;">
+          <!-- Líneas diagonales decorativas -->
+          <div style="position:absolute;top:0;left:-30px;width:120px;height:100%;background:linear-gradient(135deg,rgba(227,0,15,.35) 0%,transparent 60%);transform:skewX(-5deg);pointer-events:none;"></div>
+          <div style="position:absolute;top:0;left:-10px;width:50px;height:100%;background:rgba(0,0,0,.3);transform:skewX(-5deg);pointer-events:none;"></div>
 
-            <!-- Tu mejor Versión -->
-            <div style="text-align:center;padding:.6rem 1rem .5rem;position:relative;">
-              <span style="color:#fff;font-size:1.3rem;font-weight:900;font-style:italic;">Tu mejor </span><span style="color:#E3000F;font-size:1.3rem;font-weight:900;font-style:italic;text-shadow:0 0 15px rgba(227,0,15,.5);">Versión</span>
-              <div style="width:60px;height:3px;background:#E3000F;margin:.3rem auto 0;border-radius:2px;box-shadow:0 0 8px rgba(227,0,15,.6);"></div>
-            </div>
+          ${logoSrc ? '<img src="'+logoSrc+'" style="height:75px;width:auto;display:block;margin:0 auto;position:relative;filter:drop-shadow(0 4px 15px rgba(227,0,15,.3));"/>' : '<div style="color:#E3000F;font-size:2rem;font-weight:900;position:relative;">JOMAC</div>'}
 
-            <!-- Campos de datos -->
-            <div style="padding:.5rem 1.2rem;position:relative;">
-              ${[
-                ['NOMBRE', miembro.nombre.split(' ').slice(0,1).join(' ')],
-                ['APELLIDOS', miembro.nombre.split(' ').slice(1).join(' ') || '—'],
-                ['N° DE MIEMBRO', miembro.id],
-                ['FECHA DE ALTA', formatDateNice(miembro.fechaReg)||'—'],
-                ['PLAN', plan],
-              ].map(([label, value]) => `
-                <div style="background:rgba(255,255,255,.9);border-radius:8px;padding:.35rem .8rem;margin-bottom:.35rem;display:flex;align-items:center;gap:.5rem;">
-                  <span style="color:#111;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;min-width:110px;">${label}:</span>
-                  <span style="color:#E3000F;font-size:.72rem;font-weight:700;flex:1;">${value}</span>
-                </div>
-              `).join('')}
-            </div>
+          <!-- Tu mejor Versión -->
+          <div style="position:relative;margin:.5rem 0 .3rem;">
+            <span style="color:#fff;font-size:1.2rem;font-weight:900;font-style:italic;">Tu mejor </span><span style="color:#E3000F;font-size:1.2rem;font-weight:900;font-style:italic;">Versión</span>
+            <div style="width:55px;height:3px;background:#E3000F;margin:.25rem auto 0;border-radius:2px;"></div>
+          </div>
 
-            <!-- Footer MIEMBRO -->
-            <div style="position:absolute;bottom:0;left:0;right:0;background:#E3000F;padding:.6rem;text-align:center;">
-              <div style="color:#fff;font-size:.9rem;font-weight:900;letter-spacing:.4em;text-transform:uppercase;">M I E M B R O</div>
+          <!-- Ola que separa negro de blanco -->
+          <div style="position:relative;height:40px;margin-top:.5rem;">
+            <svg viewBox="0 0 320 40" style="position:absolute;bottom:0;left:0;width:100%;" preserveAspectRatio="none">
+              <path d="M0,40 L0,15 Q80,0 160,15 Q240,30 320,10 L320,40 Z" fill="#fff"/>
+              <path d="M0,40 L0,18 Q80,3 160,18 Q240,33 320,13 L320,40 Z" fill="#fff"/>
+            </svg>
+            <svg viewBox="0 0 320 40" style="position:absolute;bottom:0;left:0;width:100%;opacity:.7;" preserveAspectRatio="none">
+              <path d="M0,38 L0,16 Q80,1 160,16 Q240,31 320,11 L320,38 Z" fill="none" stroke="#E3000F" stroke-width="2"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Body blanco con datos -->
+        <div style="background:#fff;padding:.8rem 1.3rem 1rem;position:relative;">
+          <!-- Watermark -->
+          <div style="position:absolute;right:-10px;top:50%;transform:translateY(-50%);opacity:.05;font-size:7rem;font-weight:900;color:#E3000F;pointer-events:none;line-height:1;">J</div>
+
+          <!-- Nombre -->
+          <div style="text-align:center;margin-bottom:.8rem;">
+            <div style="color:#111;font-size:1rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;">${miembro.nombre}</div>
+            <div style="display:inline-block;margin-top:.3rem;background:#E3000F;border-radius:20px;padding:.15rem .8rem;color:#fff;font-size:.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">${miembro.esInstructor ? '🏋️ INSTRUCTOR' : '⚡ '+plan}</div>
+          </div>
+
+          <!-- Campos -->
+          ${[
+            ['N° de Miembro', miembro.id],
+            ['Miembro desde', formatDateNice(miembro.fechaReg)||'—'],
+            ['Vencimiento', vence],
+            ['Asistencias', totalAtt+' visitas 🔥'],
+          ].map(([l,v]) => '<div style="display:flex;justify-content:space-between;align-items:center;padding:.28rem 0;border-bottom:1px solid #f0f0f0;"><span style="color:#888;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">'+l+'</span><span style="color:#111;font-size:.7rem;font-weight:700;">'+v+'</span></div>').join('')}
+
+          <!-- Estado -->
+          <div style="margin-top:.6rem;background:${pago ? '#f0fdf4' : '#fef2f2'};border:1.5px solid ${pago ? '#22C55E' : '#E3000F'};border-radius:8px;padding:.4rem .8rem;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:.4rem;">
+              <div style="width:7px;height:7px;border-radius:50%;background:${pago ? '#22C55E' : '#E3000F'};"></div>
+              <span style="color:${pago ? '#16A34A' : '#E3000F'};font-size:.65rem;font-weight:900;">${pago ? 'MEMBRESÍA VIGENTE' : 'MEMBRESÍA VENCIDA'}</span>
             </div>
           </div>
         </div>
 
-        <!-- ══ REVERSO ══ -->
-        <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:20px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.6);">
-          <div style="background:#fff;width:100%;height:100%;position:relative;overflow:hidden;">
+        <!-- Footer rojo -->
+        <div style="background:#E3000F;padding:.55rem;text-align:center;">
+          <div style="color:#fff;font-size:.85rem;font-weight:900;letter-spacing:.35em;">${miembro.esInstructor ? 'I N S T R U C T O R' : 'M I E M B R O'}</div>
+        </div>
+      </div>
 
-            <!-- Agujero superior -->
-            <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);width:40px;height:18px;border:3px solid rgba(0,0,0,.15);border-radius:10px;background:rgba(255,255,255,.8);z-index:2;"></div>
+      <!-- ══ REVERSO ══ -->
+      <div class="cb" style="display:none;border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.4);background:#fff;position:relative;">
 
-            <!-- Header negro con logo -->
-            <div style="background:linear-gradient(160deg,#111 60%,#E3000F 100%);padding:2.5rem 1rem 1.5rem;text-align:center;position:relative;overflow:hidden;">
-              <div style="position:absolute;bottom:-20px;left:0;right:0;height:40px;background:#fff;border-radius:50% 50% 0 0;"></div>
-              ${logoSrc ? '<img src="'+logoSrc+'" style="height:60px;width:auto;display:block;margin:0 auto;filter:drop-shadow(0 4px 12px rgba(227,0,15,.4));position:relative;"/>' : '<div style="color:#E3000F;font-size:2rem;font-weight:900;">JOMAC</div>'}
-              <div style="color:rgba(255,255,255,.7);font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;margin-top:.3rem;position:relative;">Entrenamiento Funcional</div>
-              <div style="position:relative;margin-top:.4rem;">
-                <span style="color:#fff;font-size:1rem;font-weight:900;font-style:italic;">Tu mejor </span><span style="color:#E3000F;font-size:1rem;font-weight:900;font-style:italic;">Versión</span>
-              </div>
-            </div>
+        <!-- Agujero -->
+        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:38px;height:16px;border:2.5px solid rgba(0,0,0,.12);border-radius:8px;background:rgba(255,255,255,.8);z-index:3;"></div>
 
-            <!-- Logo marca de agua -->
-            <div style="position:absolute;right:-20px;top:45%;transform:translateY(-50%);opacity:.06;font-size:8rem;font-weight:900;color:#E3000F;pointer-events:none;">J</div>
-
-            <!-- Línea roja -->
-            <div style="height:3px;background:linear-gradient(90deg,transparent,#E3000F,transparent);margin:1.5rem 1.2rem .8rem;"></div>
-
-            <!-- Iconos motivacionales -->
-            <div style="display:flex;justify-content:space-around;padding:.5rem 1rem;margin-top:.5rem;">
-              ${[
-                ['🏋️','ENTRENA'],
-                ['❤️','SUPÉRATE'],
-                ['🎯','ENFÓCATE'],
-                ['💪','LOGRA'],
-              ].map(([icon, label]) => `
-                <div style="text-align:center;">
-                  <div style="width:44px;height:44px;border:2px solid #E3000F;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin:0 auto .3rem;">
-                    ${icon}
-                  </div>
-                  <div style="color:#111;font-size:.48rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;">${label}</div>
-                </div>
-              `).join('')}
-            </div>
-
-            <!-- Estado vigencia -->
-            <div style="margin:.8rem 1.2rem 0;background:${pago ? '#f0fdf4' : '#fef2f2'};border:2px solid ${pago ? '#22C55E' : '#E3000F'};border-radius:10px;padding:.5rem .8rem;display:flex;align-items:center;justify-content:space-between;">
-              <div>
-                <div style="color:#666;font-size:.5rem;text-transform:uppercase;letter-spacing:.1em;">Estado</div>
-                <div style="color:${pago ? '#16A34A' : '#E3000F'};font-size:.8rem;font-weight:900;">${pago ? '✔ VIGENTE' : '✗ VENCIDA'}</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="color:#666;font-size:.5rem;text-transform:uppercase;letter-spacing:.1em;">Vence</div>
-                <div style="color:#111;font-size:.72rem;font-weight:700;">${vence}</div>
-              </div>
-            </div>
-
-            <!-- Footer -->
-            <div style="position:absolute;bottom:0;left:0;right:0;background:#222;padding:.5rem;text-align:center;">
-              <div style="color:rgba(255,255,255,.6);font-size:.5rem;letter-spacing:.02em;">Esta credencial es personal e intransferible. Úsala con responsabilidad.</div>
-            </div>
+        <!-- Header negro con ola -->
+        <div style="background:#0d0d0d;padding:2.8rem 1.2rem 0;text-align:center;position:relative;overflow:hidden;">
+          <div style="position:absolute;top:0;right:-20px;width:100px;height:100%;background:linear-gradient(135deg,transparent 40%,rgba(227,0,15,.4) 100%);pointer-events:none;"></div>
+          ${logoSrc ? '<img src="'+logoSrc+'" style="height:65px;width:auto;display:block;margin:0 auto;position:relative;filter:drop-shadow(0 4px 12px rgba(227,0,15,.3));"/>' : '<div style="color:#E3000F;font-size:2rem;font-weight:900;">JOMAC</div>'}
+          <div style="color:rgba(255,255,255,.5);font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;margin:.2rem 0 .4rem;position:relative;">Entrenamiento Funcional</div>
+          <div style="position:relative;margin-bottom:.3rem;">
+            <span style="color:#fff;font-size:1rem;font-weight:900;font-style:italic;">Tu mejor </span><span style="color:#E3000F;font-size:1rem;font-weight:900;font-style:italic;">Versión</span>
+          </div>
+          <!-- Ola -->
+          <div style="position:relative;height:35px;">
+            <svg viewBox="0 0 320 35" style="position:absolute;bottom:0;left:0;width:100%;" preserveAspectRatio="none">
+              <path d="M0,35 L0,12 Q80,0 160,12 Q240,24 320,8 L320,35 Z" fill="#fff"/>
+            </svg>
+            <svg viewBox="0 0 320 35" style="position:absolute;bottom:0;left:0;width:100%;opacity:.8;" preserveAspectRatio="none">
+              <path d="M0,33 L0,13 Q80,1 160,13 Q240,25 320,9 L320,33 Z" fill="none" stroke="#E3000F" stroke-width="2"/>
+            </svg>
           </div>
         </div>
 
+        <!-- Watermark central -->
+        <div style="background:#fff;padding:1.5rem 1.2rem .5rem;text-align:center;position:relative;min-height:100px;">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.05;pointer-events:none;">
+            ${logoSrc ? '<img src="'+logoSrc+'" style="width:200px;height:auto;opacity:.5;"/>' : '<div style="font-size:8rem;font-weight:900;color:#E3000F;">J</div>'}
+          </div>
+        </div>
+
+        <!-- Línea roja -->
+        <div style="height:2.5px;background:linear-gradient(90deg,transparent,#E3000F,#E3000F,transparent);margin:0 1.2rem .8rem;"></div>
+
+        <!-- Iconos -->
+        <div style="display:flex;justify-content:space-around;padding:.5rem 1rem .8rem;background:#fff;">
+          ${ [['🏋️','ENTRENA'],['❤️','SUPÉRATE'],['🎯','ENFÓCATE'],['💪','LOGRA']].map(([ic,lb]) =>
+            '<div style="text-align:center;"><div style="width:46px;height:46px;border:2px solid #E3000F;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin:0 auto .3rem;">'+ic+'</div><div style="height:20px;width:1px;background:#ddd;margin:0 auto .2rem;"></div><div style="color:#111;font-size:.48rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;">'+lb+'</div></div>'
+          ).join('') }
+        </div>
+
+        <!-- Footer -->
+        <div style="background:#222;padding:.5rem;text-align:center;">
+          <div style="color:rgba(255,255,255,.55);font-size:.5rem;">Esta credencial es personal e intransferible. Úsala con responsabilidad.</div>
+        </div>
       </div>
     </div>
-    <div style="text-align:center;margin-top:.6rem;color:rgba(0,0,0,.35);font-size:.65rem;letter-spacing:.05em;">Toca la credencial para voltear</div>
   `;
+
 }
 function verCredencialMiembro(memberId) {
   navTo('credencial');
