@@ -2169,7 +2169,7 @@ function loadDashboard() {
     return diff >= 0 && diff <= 7 && p.activo;
   }).sort((a,b)=>new Date(limpiarFecha(a.fechaFin))-new Date(limpiarFecha(b.fechaFin)));
   expBody.innerHTML = exp.length ? exp.map(p => {
-    const diff = Math.ceil((new Date(p.fechaFin+'T00:00:00') - new Date().setHours(0,0,0,0))/(1000*60*60*24));
+    const diff = Math.ceil((new Date(limpiarFecha(p.fechaFin)+'T00:00:00') - new Date().setHours(0,0,0,0))/(1000*60*60*24));
     const cls  = diff <= 1 ? 'badge-red' : diff <= 3 ? 'badge-yellow' : 'badge-green';
     return `<tr>
       <td>${p.memberName}</td>
@@ -2195,7 +2195,7 @@ function renderMiembros() {
   tbody.innerHTML = filtered.map(m => {
     const pago = getActivePago(m.id);
     const vence = pago ? pago.fechaFin : null;
-    const diff  = vence ? Math.ceil((new Date(vence+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24)) : null;
+    const diff  = vence ? Math.ceil((new Date(limpiarFecha(vence)+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24)) : null;
     const estado = !pago ? 'badge-gray' : diff < 0 ? 'badge-red' : diff <= 3 ? 'badge-yellow' : 'badge-green';
     const est    = !pago ? 'SIN PLAN' : diff < 0 ? 'VENCIDO' : 'ACTIVO';
     return `<tr>
@@ -2286,7 +2286,7 @@ function exportVencimientosPDF() {
 
     doc.setFont('helvetica','normal');
     exp.forEach((p, idx) => {
-      const fin  = new Date(p.fechaFin+'T00:00:00');
+      const fin  = new Date(limpiarFecha(p.fechaFin)+'T00:00:00');
       const diff = Math.ceil((fin - new Date().setHours(0,0,0,0)) / (1000*60*60*24));
       const diasLabel = diff === 0 ? 'HOY' : diff + ' día(s)';
 
@@ -2510,7 +2510,7 @@ function viewMiembro(id) {
   const pago  = getActivePago(id);
   const total = att.filter(a=>a.memberId===id).length;
   editingMemberId = id;
-  const diff = pago ? Math.ceil((new Date(pago.fechaFin+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24)) : null;
+  const diff = pago ? Math.ceil((new Date(limpiarFecha(pago.fechaFin)+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24)) : null;
 
   document.getElementById('verMiembroContent').innerHTML = `
     <div class="profile-card">
@@ -2693,7 +2693,7 @@ function cargarEstadoMiembroPago(memberId) {
     return;
   }
 
-  const finPago = new Date(ultimoPago.fechaFin+'T00:00:00');
+  const finPago = new Date(limpiarFecha(ultimoPago.fechaFin)+'T00:00:00');
   const diff    = Math.ceil((finPago - now)/(1000*60*60*24));
 
   if (diff < 0) {
@@ -2876,7 +2876,7 @@ function renderPagos() {
   const tbody = document.getElementById('tablaPagos');
   if (!filtered.length) { tbody.innerHTML=`<tr><td colspan="7"><div class="no-data"><div class="no-data-icon">💳</div>Sin pagos</div></td></tr>`; return; }
   tbody.innerHTML = filtered.map(p => {
-    const diff  = Math.ceil((new Date(p.fechaFin+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24));
+    const diff  = Math.ceil((new Date(limpiarFecha(p.fechaFin)+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24));
     const cls   = diff < 0 ? 'badge-red' : diff <= 3 ? 'badge-yellow' : 'badge-green';
     const est   = diff < 0 ? 'VENCIDO' : 'VIGENTE';
     const icons = { efectivo:'💵', transferencia:'🏦', tarjeta:'💳' };
@@ -3317,7 +3317,7 @@ function loadMemberProfile() {
   const m    = currentUser.data;
   const att  = DB.get('attendance', []).filter(a=>a.memberId===m.id);
   const pago = getActivePago(m.id);
-  const diff = pago ? Math.ceil((new Date(pago.fechaFin+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24)) : null;
+  const diff = pago ? Math.ceil((new Date(limpiarFecha(pago.fechaFin)+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24)) : null;
   const today   = fmtDate(new Date());
   const attHoy  = att.filter(a=>a.fecha===today);
   const hs      = getHorarioStatus(m);
@@ -4247,7 +4247,7 @@ function loadMisPagos() {
   const payments = DB.get('payments', []).filter(p => p.memberId === m.id).reverse();
   const today    = new Date(); today.setHours(0,0,0,0);
 
-  const pagoActivo = payments.find(p => new Date(p.fechaFin+'T00:00:00') >= today);
+  const pagoActivo = payments.find(p => new Date(limpiarFecha(p.fechaFin)+'T00:00:00') >= today);
 
   let html = '';
 
@@ -4280,7 +4280,7 @@ function loadMisPagos() {
     const icons = { efectivo:'💵', transferencia:'🏦', tarjeta:'💳' };
     html += `<table><thead><tr><th>FECHA</th><th>PLAN</th><th>MONTO</th><th>MÉTODO</th><th>VIGENCIA</th><th>ESTADO</th></tr></thead><tbody>`;
     html += payments.map(p => {
-      const diff2 = Math.ceil((new Date(p.fechaFin+'T00:00:00') - today) / (1000*60*60*24));
+      const diff2 = Math.ceil((new Date(limpiarFecha(p.fechaFin)+'T00:00:00') - today) / (1000*60*60*24));
       const cls   = diff2 < 0 ? 'badge-red' : 'badge-green';
       const est   = diff2 < 0 ? 'VENCIDO' : 'VIGENTE';
       return `<tr>
