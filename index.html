@@ -3878,67 +3878,118 @@ function renderCredencial(memberId) {
   const inicial = miembro.nombre ? miembro.nombre[0].toUpperCase() : '?';
 
   el.innerHTML = `
-    <div style="width:320px;border-radius:24px;overflow:hidden;box-shadow:0 30px 80px rgba(227,0,15,.35),0 0 0 1px rgba(227,0,15,.2);font-family:'Segoe UI',Arial,sans-serif;position:relative;">
-      <div style="background:linear-gradient(145deg,#1a0000 0%,#0d0d0d 40%,#1a0a00 100%);position:relative;overflow:hidden;">
-        <div style="position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(227,0,15,.15) 0%,transparent 70%);top:-50px;right:-50px;pointer-events:none;"></div>
-        <div style="position:absolute;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(227,0,15,.1) 0%,transparent 70%);bottom:-30px;left:-30px;pointer-events:none;"></div>
-        <!-- HEADER -->
-        <div style="padding:1.3rem 1.3rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(227,0,15,.2);position:relative;">
-          <div>
-            ${logoSrc ? `<img src="${logoSrc}" style="height:34px;width:auto;display:block;"/>` : `<div style="color:#E3000F;font-size:1.5rem;font-weight:900;letter-spacing:.1em;text-shadow:0 0 20px rgba(227,0,15,.5);">JOMAC</div>`}
-            <div style="color:rgba(255,255,255,.3);font-size:.46rem;letter-spacing:.18em;text-transform:uppercase;margin-top:.15rem;">Entrenamiento Funcional</div>
-          </div>
-          <div style="width:42px;height:30px;background:linear-gradient(135deg,#FFD700,#FFA500,#FFD700);border-radius:5px;box-shadow:0 2px 8px rgba(255,165,0,.3);padding:4px 5px;">
-            <div style="height:2px;background:rgba(0,0,0,.3);border-radius:1px;margin-bottom:3px;"></div>
-            <div style="height:2px;background:rgba(0,0,0,.3);border-radius:1px;width:70%;margin-bottom:3px;"></div>
-            <div style="height:2px;background:rgba(0,0,0,.3);border-radius:1px;"></div>
+    <div style="perspective:1000px;width:320px;cursor:pointer;" onclick="this.querySelector('.cred-inner').style.transform = this.querySelector('.cred-inner').style.transform === 'rotateY(180deg)' ? 'rotateY(0deg)' : 'rotateY(180deg)'">
+      <div class="cred-inner" style="position:relative;width:320px;height:480px;transition:transform 0.6s;transform-style:preserve-3d;">
+
+        <!-- ══ FRENTE ══ -->
+        <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:20px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.6);">
+          <!-- Fondo negro con líneas diagonales -->
+          <div style="background:#111;width:100%;height:100%;position:relative;overflow:hidden;">
+            <!-- Líneas diagonales rojo/gris como el diseño -->
+            <div style="position:absolute;top:-20px;left:-20px;width:180px;height:600px;background:linear-gradient(135deg,rgba(227,0,15,.5),rgba(80,80,80,.3));transform:rotate(-15deg);pointer-events:none;"></div>
+            <div style="position:absolute;top:-20px;left:10px;width:80px;height:600px;background:rgba(0,0,0,.4);transform:rotate(-15deg);pointer-events:none;"></div>
+
+            <!-- Agujero superior -->
+            <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);width:40px;height:18px;border:3px solid rgba(255,255,255,.2);border-radius:10px;background:rgba(0,0,0,.5);"></div>
+
+            <!-- Logo -->
+            <div style="text-align:center;padding:2.5rem 1rem 0;position:relative;">
+              ${logoSrc ? '<img src="'+logoSrc+'" style="height:80px;width:auto;display:block;margin:0 auto;filter:drop-shadow(0 4px 12px rgba(227,0,15,.4));"/>' : '<div style="color:#E3000F;font-size:2.5rem;font-weight:900;text-shadow:0 0 30px rgba(227,0,15,.6);">JOMAC</div>'}
+            </div>
+
+            <!-- Tu mejor Versión -->
+            <div style="text-align:center;padding:.6rem 1rem .5rem;position:relative;">
+              <span style="color:#fff;font-size:1.3rem;font-weight:900;font-style:italic;">Tu mejor </span><span style="color:#E3000F;font-size:1.3rem;font-weight:900;font-style:italic;text-shadow:0 0 15px rgba(227,0,15,.5);">Versión</span>
+              <div style="width:60px;height:3px;background:#E3000F;margin:.3rem auto 0;border-radius:2px;box-shadow:0 0 8px rgba(227,0,15,.6);"></div>
+            </div>
+
+            <!-- Campos de datos -->
+            <div style="padding:.5rem 1.2rem;position:relative;">
+              ${[
+                ['NOMBRE', miembro.nombre.split(' ').slice(0,1).join(' ')],
+                ['APELLIDOS', miembro.nombre.split(' ').slice(1).join(' ') || '—'],
+                ['N° DE MIEMBRO', miembro.id],
+                ['FECHA DE ALTA', formatDateNice(miembro.fechaReg)||'—'],
+                ['PLAN', plan],
+              ].map(([label, value]) => `
+                <div style="background:rgba(255,255,255,.9);border-radius:8px;padding:.35rem .8rem;margin-bottom:.35rem;display:flex;align-items:center;gap:.5rem;">
+                  <span style="color:#111;font-size:.6rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;min-width:110px;">${label}:</span>
+                  <span style="color:#E3000F;font-size:.72rem;font-weight:700;flex:1;">${value}</span>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Footer MIEMBRO -->
+            <div style="position:absolute;bottom:0;left:0;right:0;background:#E3000F;padding:.6rem;text-align:center;">
+              <div style="color:#fff;font-size:.9rem;font-weight:900;letter-spacing:.4em;text-transform:uppercase;">M I E M B R O</div>
+            </div>
           </div>
         </div>
-        <!-- BODY -->
-        <div style="padding:1.1rem 1.3rem;">
-          <div style="display:flex;align-items:center;gap:.9rem;margin-bottom:.9rem;">
-            <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#E3000F,#8B0000);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:900;color:#fff;box-shadow:0 0 20px rgba(227,0,15,.4),0 0 0 2px rgba(227,0,15,.3);flex-shrink:0;">${inicial}</div>
-            <div style="flex:1;">
-              <div style="color:#fff;font-size:.92rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;">${miembro.nombre}</div>
-              <div style="display:inline-block;margin-top:.25rem;background:rgba(227,0,15,.2);border:1px solid rgba(227,0,15,.4);border-radius:20px;padding:.12rem .55rem;color:#E3000F;font-size:.56rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">⚡ ${plan}</div>
+
+        <!-- ══ REVERSO ══ -->
+        <div style="position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:20px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.6);">
+          <div style="background:#fff;width:100%;height:100%;position:relative;overflow:hidden;">
+
+            <!-- Agujero superior -->
+            <div style="position:absolute;top:12px;left:50%;transform:translateX(-50%);width:40px;height:18px;border:3px solid rgba(0,0,0,.15);border-radius:10px;background:rgba(255,255,255,.8);z-index:2;"></div>
+
+            <!-- Header negro con logo -->
+            <div style="background:linear-gradient(160deg,#111 60%,#E3000F 100%);padding:2.5rem 1rem 1.5rem;text-align:center;position:relative;overflow:hidden;">
+              <div style="position:absolute;bottom:-20px;left:0;right:0;height:40px;background:#fff;border-radius:50% 50% 0 0;"></div>
+              ${logoSrc ? '<img src="'+logoSrc+'" style="height:60px;width:auto;display:block;margin:0 auto;filter:drop-shadow(0 4px 12px rgba(227,0,15,.4));position:relative;"/>' : '<div style="color:#E3000F;font-size:2rem;font-weight:900;">JOMAC</div>'}
+              <div style="color:rgba(255,255,255,.7);font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;margin-top:.3rem;position:relative;">Entrenamiento Funcional</div>
+              <div style="position:relative;margin-top:.4rem;">
+                <span style="color:#fff;font-size:1rem;font-weight:900;font-style:italic;">Tu mejor </span><span style="color:#E3000F;font-size:1rem;font-weight:900;font-style:italic;">Versión</span>
+              </div>
             </div>
-          </div>
-          <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(227,0,15,.5),rgba(255,165,0,.3),transparent);margin:.2rem 0 .7rem;"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-bottom:.7rem;">
-            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.45rem .55rem;">
-              <div style="color:rgba(255,255,255,.33);font-size:.48rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.12rem;">Vencimiento</div>
-              <div style="color:#fff;font-size:.68rem;font-weight:700;">${vence}</div>
+
+            <!-- Logo marca de agua -->
+            <div style="position:absolute;right:-20px;top:45%;transform:translateY(-50%);opacity:.06;font-size:8rem;font-weight:900;color:#E3000F;pointer-events:none;">J</div>
+
+            <!-- Línea roja -->
+            <div style="height:3px;background:linear-gradient(90deg,transparent,#E3000F,transparent);margin:1.5rem 1.2rem .8rem;"></div>
+
+            <!-- Iconos motivacionales -->
+            <div style="display:flex;justify-content:space-around;padding:.5rem 1rem;margin-top:.5rem;">
+              ${[
+                ['🏋️','ENTRENA'],
+                ['❤️','SUPÉRATE'],
+                ['🎯','ENFÓCATE'],
+                ['💪','LOGRA'],
+              ].map(([icon, label]) => `
+                <div style="text-align:center;">
+                  <div style="width:44px;height:44px;border:2px solid #E3000F;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin:0 auto .3rem;">
+                    ${icon}
+                  </div>
+                  <div style="color:#111;font-size:.48rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;">${label}</div>
+                </div>
+              `).join('')}
             </div>
-            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.45rem .55rem;">
-              <div style="color:rgba(255,255,255,.33);font-size:.48rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.12rem;">Miembro ID</div>
-              <div style="color:#E3000F;font-size:.68rem;font-weight:700;">${miembro.id}</div>
+
+            <!-- Estado vigencia -->
+            <div style="margin:.8rem 1.2rem 0;background:${pago ? '#f0fdf4' : '#fef2f2'};border:2px solid ${pago ? '#22C55E' : '#E3000F'};border-radius:10px;padding:.5rem .8rem;display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div style="color:#666;font-size:.5rem;text-transform:uppercase;letter-spacing:.1em;">Estado</div>
+                <div style="color:${pago ? '#16A34A' : '#E3000F'};font-size:.8rem;font-weight:900;">${pago ? '✔ VIGENTE' : '✗ VENCIDA'}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="color:#666;font-size:.5rem;text-transform:uppercase;letter-spacing:.1em;">Vence</div>
+                <div style="color:#111;font-size:.72rem;font-weight:700;">${vence}</div>
+              </div>
             </div>
-            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.45rem .55rem;">
-              <div style="color:rgba(255,255,255,.33);font-size:.48rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.12rem;">Desde</div>
-              <div style="color:#fff;font-size:.68rem;font-weight:700;">${formatDateNice(miembro.fechaReg)||'—'}</div>
+
+            <!-- Footer -->
+            <div style="position:absolute;bottom:0;left:0;right:0;background:#222;padding:.5rem;text-align:center;">
+              <div style="color:rgba(255,255,255,.6);font-size:.5rem;letter-spacing:.02em;">Esta credencial es personal e intransferible. Úsala con responsabilidad.</div>
             </div>
-            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.45rem .55rem;">
-              <div style="color:rgba(255,255,255,.33);font-size:.48rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.12rem;">Asistencias</div>
-              <div style="color:#FFD700;font-size:.68rem;font-weight:700;">${totalAtt} 🔥</div>
-            </div>
-          </div>
-          <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:.5rem .75rem;display:flex;align-items:center;justify-content:space-between;">
-            <div style="color:rgba(255,255,255,.35);font-size:.5rem;text-transform:uppercase;letter-spacing:.1em;">Estado</div>
-            <div style="background:${pago ? 'rgba(34,197,94,.15)' : 'rgba(227,0,15,.15)'};border:1px solid ${pago ? 'rgba(34,197,94,.4)' : 'rgba(227,0,15,.4)'};border-radius:20px;padding:.15rem .6rem;color:${pago ? '#22C55E' : '#E3000F'};font-size:.56rem;font-weight:700;letter-spacing:.08em;display:flex;align-items:center;gap:.3rem;">
-              <div style="width:5px;height:5px;border-radius:50%;background:${pago ? '#22C55E' : '#E3000F'};"></div>${pago ? 'VIGENTE' : 'VENCIDA'}</div>
           </div>
         </div>
-        <!-- FOOTER -->
-        <div style="background:linear-gradient(135deg,#E3000F 0%,#8B0000 60%,#5c0000 100%);padding:.7rem 1.3rem;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;">
-          <div style="position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent,transparent 8px,rgba(255,255,255,.04) 8px,rgba(255,255,255,.04) 9px);pointer-events:none;"></div>
-          <div style="color:rgba(255,255,255,.9);font-size:.6rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;position:relative;">Tu Mejor Versión</div>
-          <div style="font-size:1rem;position:relative;">💪</div>
-        </div>
+
       </div>
     </div>
+    <div style="text-align:center;margin-top:.6rem;color:rgba(0,0,0,.35);font-size:.65rem;letter-spacing:.05em;">Toca la credencial para voltear</div>
   `;
 }
-
 function verCredencialMiembro(memberId) {
   navTo('credencial');
   setTimeout(() => renderCredencial(memberId), 150);
