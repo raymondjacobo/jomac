@@ -2012,8 +2012,9 @@ function loginMember() {
     return;
   }
   // Contraseña: si no tiene, usar PIN como contraseña inicial
-  const passGuardada = m.password || m.pin;
-  if (pass !== passGuardada) {
+  const passGuardada = String(m.password || m.pin || '').trim();
+  const passIngresada = String(pass || '').trim();
+  if (passIngresada !== passGuardada) {
     err.textContent = '⚠ CONTRASEÑA INCORRECTA';
     setTimeout(()=>err.textContent='', 2000);
     return;
