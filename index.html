@@ -4734,6 +4734,13 @@ function renderDashCumple() {
   }
 
   el.innerHTML = out;
+  el.querySelectorAll('[data-postalid]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var mid = btn.getAttribute('data-postalid');
+      abrirPostalCumpleId(mid);
+    });
+  });
 }
 
 // ════════════════════════════════════
