@@ -4813,7 +4813,7 @@ function abrirPostalCumple(el) {
 function enviarPostalDirecto(memberId) {
   const members = DB.get('members',[]);
   const m = members.find(x => String(x.id) === String(memberId));
-  if (!m) { toast('Miembro no encontrado','error'); return; }
+  if (!m) { toast('Miembro no encontrado: '+memberId,'error'); return; }
   const hoy = new Date();
   const fechaNac = limpiarFecha(m.fechaNac) || '2000-01-01';
   const parts = fechaNac.split('-').map(Number);
@@ -4826,13 +4826,7 @@ function enviarPostalDirecto(memberId) {
     'Tu familia JOMAC Entrenamiento Funcional te desea un excelente dia.';
   const url = tel ? 'https://wa.me/52' + tel + '?text=' + encodeURIComponent(msg)
                   : 'https://wa.me/?text=' + encodeURIComponent(msg);
-  const a = document.createElement('a');
-  a.href = url;
-  a.target = '_blank';
-  a.rel = 'noopener';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  window.open(url, '_blank');
 }
 
 function abrirPostalCumpleId(memberId) {
