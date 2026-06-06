@@ -3894,47 +3894,42 @@ function renderCredencial(memberId) {
   const inicial = miembro.nombre ? miembro.nombre[0].toUpperCase() : '?';
 
   el.innerHTML = `
-    <div style="width:320px;font-family:'Segoe UI',Arial,sans-serif;cursor:pointer;" onclick="this.querySelector('.cf').style.display=this.querySelector('.cf').style.display==='none'?'block':'none';this.querySelector('.cb').style.display=this.querySelector('.cb').style.display==='none'?'block':'none';">
-      <div style="text-align:center;margin-bottom:.4rem;color:rgba(0,0,0,.3);font-size:.6rem;letter-spacing:.1em;">Toca para voltear</div>
+    <div style="width:320px;font-family:'Segoe UI',Arial,sans-serif;">
 
-      <!-- ══ FRENTE ══ -->
-      <div class="cf" style="border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.4);background:#0d0d0d;position:relative;">
+      <!-- ══ CREDENCIAL DIGITAL JOMAC ══ -->
+      <div style="border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.5);background:#0d0d0d;position:relative;">
 
         <!-- Agujero -->
         <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:38px;height:16px;border:2.5px solid rgba(255,255,255,.15);border-radius:8px;background:#000;z-index:3;"></div>
 
-        <!-- Header negro con ola roja -->
+        <!-- Header negro -->
         <div style="position:relative;padding:3rem 1.2rem 0;text-align:center;background:#0d0d0d;overflow:hidden;">
-          <!-- Líneas diagonales decorativas -->
           <div style="position:absolute;top:0;left:-30px;width:120px;height:100%;background:linear-gradient(135deg,rgba(227,0,15,.35) 0%,transparent 60%);transform:skewX(-5deg);pointer-events:none;"></div>
           <div style="position:absolute;top:0;left:-10px;width:50px;height:100%;background:rgba(0,0,0,.3);transform:skewX(-5deg);pointer-events:none;"></div>
 
-          ${logoSrc ? '<img src="'+logoSrc+'" style="height:75px;width:auto;display:block;margin:0 auto;position:relative;filter:drop-shadow(0 4px 15px rgba(227,0,15,.3));"/>' : '<div style="color:#E3000F;font-size:2rem;font-weight:900;position:relative;">JOMAC</div>'}
+          ${logoSrc ? '<img src="'+logoSrc+'" style="height:80px;width:auto;display:block;margin:0 auto;position:relative;filter:drop-shadow(0 4px 15px rgba(227,0,15,.3));"/>' : '<div style="color:#E3000F;font-size:2.5rem;font-weight:900;position:relative;">JOMAC</div>'}
 
-          <!-- Tu mejor Versión -->
           <div style="position:relative;margin:.5rem 0 .3rem;">
             <span style="color:#fff;font-size:1.2rem;font-weight:900;font-style:italic;">Tu mejor </span><span style="color:#E3000F;font-size:1.2rem;font-weight:900;font-style:italic;">Versión</span>
             <div style="width:55px;height:3px;background:#E3000F;margin:.25rem auto 0;border-radius:2px;"></div>
           </div>
 
-          <!-- Ola que separa negro de blanco -->
+          <!-- Ola negro a blanco -->
           <div style="position:relative;height:40px;margin-top:.5rem;">
             <svg viewBox="0 0 320 40" style="position:absolute;bottom:0;left:0;width:100%;" preserveAspectRatio="none">
               <path d="M0,40 L0,15 Q80,0 160,15 Q240,30 320,10 L320,40 Z" fill="#fff"/>
-              <path d="M0,40 L0,18 Q80,3 160,18 Q240,33 320,13 L320,40 Z" fill="#fff"/>
             </svg>
-            <svg viewBox="0 0 320 40" style="position:absolute;bottom:0;left:0;width:100%;opacity:.7;" preserveAspectRatio="none">
+            <svg viewBox="0 0 320 40" style="position:absolute;bottom:0;left:0;width:100%;opacity:.8;" preserveAspectRatio="none">
               <path d="M0,38 L0,16 Q80,1 160,16 Q240,31 320,11 L320,38 Z" fill="none" stroke="#E3000F" stroke-width="2"/>
             </svg>
           </div>
         </div>
 
-        <!-- Body blanco con datos -->
+        <!-- Body blanco -->
         <div style="background:#fff;padding:.8rem 1.3rem 1rem;position:relative;">
-          <!-- Watermark -->
           <div style="position:absolute;right:-10px;top:50%;transform:translateY(-50%);opacity:.05;font-size:7rem;font-weight:900;color:#E3000F;pointer-events:none;line-height:1;">J</div>
 
-          <!-- Nombre -->
+          <!-- Nombre y badge -->
           <div style="text-align:center;margin-bottom:.8rem;">
             <div style="color:#111;font-size:1rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;">${miembro.nombre}</div>
             <div style="display:inline-block;margin-top:.3rem;background:#E3000F;border-radius:20px;padding:.15rem .8rem;color:#fff;font-size:.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;">${miembro.esInstructor ? '🏋️ INSTRUCTOR' : '⚡ '+plan}</div>
@@ -3946,69 +3941,28 @@ function renderCredencial(memberId) {
             ['Miembro desde', formatDateNice(miembro.fechaReg)||'—'],
             ['Vencimiento', vence],
             ['Asistencias', totalAtt+' visitas 🔥'],
-          ].map(([l,v]) => '<div style="display:flex;justify-content:space-between;align-items:center;padding:.28rem 0;border-bottom:1px solid #f0f0f0;"><span style="color:#888;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">'+l+'</span><span style="color:#111;font-size:.7rem;font-weight:700;">'+v+'</span></div>').join('')}
+          ].map(([l,v]) => '<div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid #f0f0f0;"><span style="color:#888;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">'+l+'</span><span style="color:#111;font-size:.7rem;font-weight:700;">'+v+'</span></div>').join('')}
 
           <!-- Estado -->
-          <div style="margin-top:.6rem;background:${pago ? '#f0fdf4' : '#fef2f2'};border:1.5px solid ${pago ? '#22C55E' : '#E3000F'};border-radius:8px;padding:.4rem .8rem;display:flex;align-items:center;justify-content:space-between;">
-            <div style="display:flex;align-items:center;gap:.4rem;">
-              <div style="width:7px;height:7px;border-radius:50%;background:${pago ? '#22C55E' : '#E3000F'};"></div>
-              <span style="color:${pago ? '#16A34A' : '#E3000F'};font-size:.65rem;font-weight:900;">${pago ? 'MEMBRESÍA VIGENTE' : 'MEMBRESÍA VENCIDA'}</span>
-            </div>
+          <div style="margin-top:.6rem;background:${pago ? '#f0fdf4' : '#fef2f2'};border:1.5px solid ${pago ? '#22C55E' : '#E3000F'};border-radius:8px;padding:.4rem .8rem;display:flex;align-items:center;gap:.4rem;">
+            <div style="width:7px;height:7px;border-radius:50%;background:${pago ? '#22C55E' : '#E3000F'};flex-shrink:0;"></div>
+            <span style="color:${pago ? '#16A34A' : '#E3000F'};font-size:.65rem;font-weight:900;">${pago ? 'MEMBRESÍA VIGENTE' : 'MEMBRESÍA VENCIDA'}</span>
+          </div>
+
+          <!-- Iconos -->
+          <div style="display:flex;justify-content:space-around;padding:.8rem 0 .3rem;">
+            ${ [['🏋️','ENTRENA'],['❤️','SUPÉRATE'],['🎯','ENFÓCATE'],['💪','LOGRA']].map(([ic,lb]) =>
+              '<div style="text-align:center;"><div style="width:38px;height:38px;border:1.5px solid #E3000F;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;margin:0 auto .25rem;">'+ic+'</div><div style="color:#555;font-size:.45rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;">'+lb+'</div></div>'
+            ).join('') }
           </div>
         </div>
 
         <!-- Footer rojo -->
-        <div style="background:#E3000F;padding:.55rem;text-align:center;">
-          <div style="color:#fff;font-size:.85rem;font-weight:900;letter-spacing:.35em;">${miembro.esInstructor ? 'I N S T R U C T O R' : 'M I E M B R O'}</div>
-        </div>
-      </div>
-
-      <!-- ══ REVERSO ══ -->
-      <div class="cb" style="display:none;border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.4);background:#fff;position:relative;">
-
-        <!-- Agujero -->
-        <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:38px;height:16px;border:2.5px solid rgba(0,0,0,.12);border-radius:8px;background:rgba(255,255,255,.8);z-index:3;"></div>
-
-        <!-- Header negro con ola -->
-        <div style="background:#0d0d0d;padding:2.8rem 1.2rem 0;text-align:center;position:relative;overflow:hidden;">
-          <div style="position:absolute;top:0;right:-20px;width:100px;height:100%;background:linear-gradient(135deg,transparent 40%,rgba(227,0,15,.4) 100%);pointer-events:none;"></div>
-          ${logoSrc ? '<img src="'+logoSrc+'" style="height:65px;width:auto;display:block;margin:0 auto;position:relative;filter:drop-shadow(0 4px 12px rgba(227,0,15,.3));"/>' : '<div style="color:#E3000F;font-size:2rem;font-weight:900;">JOMAC</div>'}
-          <div style="color:rgba(255,255,255,.5);font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;margin:.2rem 0 .4rem;position:relative;">Entrenamiento Funcional</div>
-          <div style="position:relative;margin-bottom:.3rem;">
-            <span style="color:#fff;font-size:1rem;font-weight:900;font-style:italic;">Tu mejor </span><span style="color:#E3000F;font-size:1rem;font-weight:900;font-style:italic;">Versión</span>
-          </div>
-          <!-- Ola -->
-          <div style="position:relative;height:35px;">
-            <svg viewBox="0 0 320 35" style="position:absolute;bottom:0;left:0;width:100%;" preserveAspectRatio="none">
-              <path d="M0,35 L0,12 Q80,0 160,12 Q240,24 320,8 L320,35 Z" fill="#fff"/>
-            </svg>
-            <svg viewBox="0 0 320 35" style="position:absolute;bottom:0;left:0;width:100%;opacity:.8;" preserveAspectRatio="none">
-              <path d="M0,33 L0,13 Q80,1 160,13 Q240,25 320,9 L320,33 Z" fill="none" stroke="#E3000F" stroke-width="2"/>
-            </svg>
-          </div>
+        <div style="background:#E3000F;padding:.55rem;">
+          <div style="color:#fff;font-size:.85rem;font-weight:900;letter-spacing:.35em;text-align:center;">${miembro.esInstructor ? 'I N S T R U C T O R' : 'M I E M B R O'}</div>
+          <div style="color:rgba(255,255,255,.6);font-size:.42rem;text-align:center;margin-top:.2rem;">Esta credencial es personal e intransferible</div>
         </div>
 
-        <!-- Watermark central -->
-        <div style="background:#fff;padding:1.5rem 1.2rem .5rem;text-align:center;position:relative;min-height:100px;">
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.05;pointer-events:none;">
-            ${logoSrc ? '<img src="'+logoSrc+'" style="width:200px;height:auto;opacity:.5;"/>' : '<div style="font-size:8rem;font-weight:900;color:#E3000F;">J</div>'}
-          </div>
-        </div>
-
-        <!-- Línea roja -->
-        <div style="height:2.5px;background:linear-gradient(90deg,transparent,#E3000F,#E3000F,transparent);margin:0 1.2rem .8rem;"></div>
-
-        <!-- Iconos -->
-        <div style="display:flex;justify-content:space-around;padding:.5rem 1rem .8rem;background:#fff;">
-          ${ [['🏋️','ENTRENA'],['❤️','SUPÉRATE'],['🎯','ENFÓCATE'],['💪','LOGRA']].map(([ic,lb]) =>
-            '<div style="text-align:center;"><div style="width:46px;height:46px;border:2px solid #E3000F;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin:0 auto .3rem;">'+ic+'</div><div style="height:20px;width:1px;background:#ddd;margin:0 auto .2rem;"></div><div style="color:#111;font-size:.48rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;">'+lb+'</div></div>'
-          ).join('') }
-        </div>
-
-        <!-- Footer -->
-        <div style="background:#222;padding:.5rem;text-align:center;">
-          <div style="color:rgba(255,255,255,.55);font-size:.5rem;">Esta credencial es personal e intransferible. Úsala con responsabilidad.</div>
-        </div>
       </div>
     </div>
   `;
