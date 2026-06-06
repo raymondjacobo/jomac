@@ -5057,43 +5057,22 @@ function descargarPostalCumple() {
 function compartirPostalCumple() {
   const canvas = document.getElementById('cumpleCanvas');
   if (!canvas) return;
-
-  const nombre = _cumpleNombreActual;
-  const edad   = _cumpleEdadActual;
-  const tel    = _cumpleTelActual;
-
-  const txt = `🎂 *¡FELIZ CUMPLEAÑOS ${nombre.split(' ')[0].toUpperCase()}!*\n` +
-              `🎉 ¡Hoy cumples ${edad} años!\n` +
-              `💪 ¡Sigue entrenando fuerte!\n\n` +
-              `_Tu familia JOMAC Entrenamiento Funcional te desea un excelente día_ 🏋️`;
-
-  // Si tiene teléfono: descargar imagen + abrir WA directo al número
-  // (wa.me con número NO admite adjuntar imagen, así que descargamos primero)
-  if (tel) {
-    descargarPostalCumple();
-    const waUrl = `https://wa.me/${tel}?text=${encodeURIComponent(txt)}`;
-    setTimeout(() => abrirWA(waUrl), 500);
-    return;
-  }
-
-  // Sin teléfono: intentar Web Share API para adjuntar imagen
-  if (navigator.share && navigator.canShare) {
-    canvas.toBlob(async (blob) => {
-      const file = new File([blob], `cumple_${nombre}.jpg`, { type:'image/jpeg' });
-      if (navigator.canShare({ files:[file] })) {
-        try {
-          await navigator.share({ title:'¡Feliz Cumpleaños!', text: txt, files:[file] });
-          return;
-        } catch(e) {}
-      }
-      abrirWA(`https://wa.me/?text=${encodeURIComponent(txt)}`);
-    }, 'image/jpeg', 0.94);
-    return;
-  }
-
-  // Fallback: descargar + WA sin número
-  descargarPostalCumple();
-  setTimeout(() => abrirWA(`https://wa.me/?text=${encodeURIComponent(txt)}`), 500);
+  canvas.toBlob(function(blob) {
+    const nombre = _cumpleNombreActual.split(' ')[0];
+    const file = new File([blob], 'postal-cumple.jpg', { type:'image/jpeg' });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files:[file] })) {
+      navigator.share({
+        title: 'Feliz Cumpleanos ' + nombre,
+        files: [file]
+      });
+    } else {
+      // Fallback: descargar imagen
+      const url = canvas.toDataURL('image/jpeg', 0.94);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'postal-cumple.jpg'; a.click();
+      
+    }
+  }, 'image/jpeg', 0.94);
 }
 
 function mostrarReciboModal(pago) {
