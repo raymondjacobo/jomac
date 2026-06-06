@@ -4717,7 +4717,7 @@ function renderDashCumple() {
           </div>
           <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
             <span class="badge badge-red" style="font-size:.75rem;padding:4px 10px;white-space:nowrap;">🎉 HOY</span>
-            <button data-cumpleid="${m.id}" class="btn-enviar-postal" style="background:#25D366;border:none;border-radius:6px;padding:.45rem .9rem;color:#fff;font-size:.78rem;font-weight:700;cursor:pointer;pointer-events:auto;">🎂 POSTAL</button>
+            <button onclick="event.stopPropagation();enviarPostalDirecto('${m.id}')" style="background:#25D366;border:none;border-radius:6px;padding:.45rem .9rem;color:#fff;font-size:.78rem;font-weight:700;cursor:pointer;">🎂 POSTAL</button>
           </div>
         </div>
       </div>`).join('');
@@ -5402,6 +5402,8 @@ document.addEventListener('click', function(e) {
   // Botón enviar postal cumpleaños
   const postalBtn = e.target.closest('.btn-enviar-postal');
   if (postalBtn) {
+    e.stopPropagation();
+    e.preventDefault();
     const mid = postalBtn.getAttribute('data-cumpleid');
     if (mid) enviarPostalDirecto(mid);
     return;
