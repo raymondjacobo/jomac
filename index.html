@@ -1287,6 +1287,7 @@
           <div style="display:flex;gap:.5rem;">
             <button class="btn-secondary" onclick="exportReportePagosCSV()" style="font-size:.78rem;padding:.4rem .9rem;">⬇ CSV</button>
             <button class="btn-secondary" onclick="exportReportePagosPDF()" style="font-size:.78rem;padding:.4rem .9rem;border-color:var(--red);color:var(--red);">📄 PDF</button>
+            <button class="btn-secondary" onclick="exportReportePagosPDF(true)" style="font-size:.78rem;padding:.4rem .9rem;border-color:#25D366;color:#25D366;">📤 WhatsApp</button>
           </div>
         </div>
         <table>
@@ -1342,12 +1343,30 @@
           <div style="display:flex;gap:.5rem;">
             <button class="btn-secondary" onclick="exportReporteAsistenciaCSV()" style="font-size:.78rem;padding:.4rem .9rem;">⬇ CSV</button>
             <button class="btn-secondary" onclick="exportReporteAsistenciaPDF()" style="font-size:.78rem;padding:.4rem .9rem;border-color:var(--red);color:var(--red);">📄 PDF</button>
+            <button class="btn-secondary" onclick="exportReporteAsistenciaPDF(true)" style="font-size:.78rem;padding:.4rem .9rem;border-color:#25D366;color:#25D366;">📤 WhatsApp</button>
           </div>
         </div>
         <table>
           <thead><tr><th>FECHA</th><th>HORA</th><th>MIEMBRO</th><th>PLAN</th><th>CLASE</th><th>ASISTENCIAS</th></tr></thead>
           <tbody id="raTabla"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- CREDENCIAL -->
+    <div class="page" id="pageCredencial">
+      <div class="page-header">
+        <div>
+          <div class="page-title">MI CREDENCIAL</div>
+          <div class="page-subtitle">TARJETA DE MEMBRESÍA</div>
+        </div>
+        <div style="display:flex;gap:.5rem;">
+          <button class="btn-secondary" onclick="guardarCredencialImg()" style="font-size:.78rem;padding:.4rem .9rem;">📷 GUARDAR</button>
+          <button class="btn-secondary" onclick="compartirCredencialWA()" style="font-size:.78rem;padding:.4rem .9rem;border-color:#25D366;color:#25D366;">📤 WA</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:center;margin-top:1rem;">
+        <div id="cred-card" style="width:300px;"></div>
       </div>
     </div>
 
@@ -2089,6 +2108,7 @@ function navigateTo(id) {
   if (id==='asistencia') { setTodayFilter(); setTimeout(renderAsistencia, 0); }
   if (id==='horarios')   { renderHorarios(); populateHInstructorSelect(); }
   if (id==='instructores') renderInstructores();
+  if (id==='credencial')       renderCredencial();
   if (id==='reportePagos')     { initReporteFechas(); renderReportePagos(); }
   if (id==='reporteAsistencia') { initReporteFechas(); renderReporteAsistencia(); }
   if (id==='checkin')    { patchAttendanceHorarios(); renderAttendanceList(); }
@@ -4006,10 +4026,12 @@ function buildReportePDF(titulo, subtitulo, headers, rows, frase) {
 
   const pdfBlob = doc.output('blob');
   const pdfUrl  = URL.createObjectURL(pdfBlob);
+  // Descargar
   const a = document.createElement('a');
   a.href = pdfUrl;
   a.download = titulo.replace(/\s+/g,'_') + '.pdf';
   a.click();
+  return { blob: pdfBlob, url: pdfUrl, titulo };
 }
 
 function agregarPiePDF(doc, frase, fechaHoy, total) {
@@ -4027,36 +4049,58 @@ function agregarPiePDF(doc, frase, fechaHoy, total) {
   doc.text('Total: ' + total + ' registros', 185, 287, { align:'right' });
 }
 
-function exportReportePagosPDF() {
+
+function compartirPDFWhatsApp(pdfResult, mensaje) {
+  if (!pdfResult) return;
+  // En móvil: intentar compartir con Web Share API
+  if (navigator.share && navigator.canShare) {
+    const file = new File([pdfResult.blob], pdfResult.titulo.replace(/\s+/g,'_')+'.pdf', { type:'application/pdf' });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({
+        title: pdfResult.titulo,
+        text: mensaje,
+        files: [file]
+      }).catch(e => console.log('Share cancelled'));
+      return;
+    }
+  }
+  // Fallback: abrir WhatsApp con mensaje
+  const texto = encodeURIComponent(mensaje + '\n\nEl PDF ha sido descargado en tu dispositivo.');
+  window.open('https://wa.me/?text=' + texto, '_blank');
+}
+
+function exportReportePagosPDF(compartir=false) {
   const title = document.getElementById('rpTableTitle')?.textContent || 'Reporte Pagos';
   const rows = [];
   document.querySelectorAll('#rpTabla tr').forEach(tr => {
     const tds = tr.querySelectorAll('td');
-    if (tds.length >= 5) rows.push([tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(), tds[3].textContent.trim(), tds[4].textContent.trim()]);
+    if (tds.length >= 5) rows.push([tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(), tds[3].textContent.trim(), tds[4].textContent.trim().replace(/[^\x00-\x7F\xC0-\xFF]/g, '').trim()]);
   });
   if (!rows.length) { toast('Sin datos para exportar','warning'); return; }
-  buildReportePDF(
+  const result = buildReportePDF(
     title, 'REPORTE DE INGRESOS',
     ['FECHA','MIEMBRO','PLAN','MONTO','METODO'],
     rows,
     ['Tu esfuerzo construye el mejor gimnasio.', 'Cada pago es un paso hacia la mejor version de tu miembro. — JOMAC']
   );
+  if (compartir) compartirPDFWhatsApp(result, '📊 ' + title + ' — JOMAC Gym Manager');
 }
 
-function exportReporteAsistenciaPDF() {
+function exportReporteAsistenciaPDF(compartir=false) {
   const title = document.getElementById('raTableTitle')?.textContent || 'Reporte Asistencia';
   const rows = [];
   document.querySelectorAll('#raTabla tr').forEach(tr => {
     const tds = tr.querySelectorAll('td');
-    if (tds.length >= 5) rows.push([tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(), tds[3].textContent.trim(), tds[4].textContent.trim()]);
+    if (tds.length >= 5) rows.push([tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(), tds[3].textContent.trim(), tds[4].textContent.trim().replace(/[^\x00-\x7F\xC0-\xFF]/g, '').trim()]);
   });
   if (!rows.length) { toast('Sin datos para exportar','warning'); return; }
-  buildReportePDF(
+  const result = buildReportePDF(
     title, 'REPORTE DE ASISTENCIAS',
     ['FECHA','HORA','MIEMBRO','PLAN','CLASE'],
     rows,
     ['La constancia es la clave del exito.', 'Cada visita cuenta — gracias por entrenar en JOMAC. — JOMAC']
   );
+  if (compartir) compartirPDFWhatsApp(result, '📋 ' + title + ' — JOMAC Gym Manager');
 }
 
 function renderInstructores() {
