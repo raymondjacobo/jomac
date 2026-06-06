@@ -59,7 +59,8 @@
   ══════════════════════════════════════════ */
   /* ══ LOGIN REDISEÑO ════════════════════════════ */
   #loginScreen {
-    min-height: 100vh;
+    height: 100vh;
+    max-height: 100vh;
     display: flex;
     align-items: stretch;
     background: #F0F0F0;
@@ -70,7 +71,7 @@
   /* Panel izquierdo — rojo */
   .login-panel-left {
     width: 45%;
-    min-height: 100vh;
+    height: 100vh;
     background: #E3000F;
     display: flex;
     flex-direction: column;
@@ -78,7 +79,7 @@
     justify-content: center;
     position: relative;
     overflow: hidden;
-    padding: 3rem 2.5rem;
+    padding: 1.5rem 2rem;
     animation: fadeIn .7s ease both;
   }
 
@@ -108,10 +109,10 @@
     text-align: center;
   }
   .login-brand img {
-    width: 220px;
+    width: 160px;
     height: auto;
     display: block;
-    margin: 0 auto 1.5rem;
+    margin: 0 auto .8rem;
     filter: none;
   }
   .login-brand-title {
@@ -132,7 +133,7 @@
   .login-brand-divider {
     width: 60px; height: 3px;
     background: rgba(255,255,255,0.4);
-    margin: 1.5rem auto;
+    margin: .7rem auto;
     border-radius: 2px;
   }
   .login-brand-desc {
@@ -254,6 +255,49 @@
     gap: 8px;
     margin-top: 1.5rem;
   }
+  .login-slogan {
+    margin-top: .6rem;
+    text-align: center;
+    line-height: 1.1;
+    filter: drop-shadow(0 2px 8px rgba(227,0,15,0.5));
+  }
+  .login-slogan span {
+    display: inline;
+    font-family: 'Barlow Condensed', 'Impact', sans-serif;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .slogan-crea {
+    font-size: 1.7rem;
+    color: #E3000F;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    -webkit-text-stroke: 1px #000;
+  }
+  .slogan-tu {
+    font-size: 1.4rem;
+    color: #fff;
+    text-shadow: 1px 1px 0 #333;
+  }
+  .slogan-mejor {
+    font-size: 1.9rem;
+    color: #fff;
+    text-shadow: 2px 2px 0 #E3000F, -1px -1px 0 #E3000F, 1px -1px 0 #E3000F, -1px 1px 0 #E3000F;
+    -webkit-text-stroke: 1px #E3000F;
+  }
+  .slogan-version {
+    font-size: 1.7rem;
+    color: #E3000F;
+    text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+    -webkit-text-stroke: 1px #000;
+  }
+  .slogan-excl {
+    font-size: 1.9rem;
+    color: #fff;
+    text-shadow: 1px 1px 0 #E3000F;
+  }
+
   .login-arrows span {
     width: 0; height: 0;
     border-top: 10px solid transparent;
@@ -722,6 +766,13 @@
       <div class="login-brand-desc">Tu gimnasio, tu disciplina.<br>Entrena fuerte, vive mejor.</div>
       <div class="login-arrows">
         <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="login-slogan">
+        <span class="slogan-crea">CREA</span>
+        <span class="slogan-tu"> TU </span>
+        <span class="slogan-mejor">MEJOR</span>
+        <span class="slogan-version"> VERSIÓN</span>
+        <span class="slogan-excl">!!</span>
       </div>
     </div>
   </div>
