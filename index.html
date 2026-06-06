@@ -4734,13 +4734,15 @@ function renderDashCumple() {
   }
 
   el.innerHTML = out;
-  // Bind postal buttons
-  setTimeout(function() {
-    document.querySelectorAll('[id^="postalBtn_"]').forEach(function(btn) {
-      var mid = btn.id.replace('postalBtn_','');
-      btn.onclick = function(e) { e.stopPropagation(); enviarPostalDirecto(mid); };
-    });
-  }, 50);
+  // Bind postal buttons directamente - sin timeout
+  document.querySelectorAll('[id^="postalBtn_"]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      var mid = this.id.replace('postalBtn_','');
+      enviarPostalDirecto(mid);
+    }, true); // useCapture = true
+  });
 }
 
 // ════════════════════════════════════
