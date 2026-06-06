@@ -2998,21 +2998,92 @@ function processCheckin() {
     setTimeout(checkinClear, 1800);
     return;
   }
+
+  // ── Verificar membresía y días restantes ──
   const pago = getActivePago(m.id);
+  let alertaMembresia = '';
+  if (!pago) {
+    // Sin membresía — mostrar aviso pero aun preguntar si continuar
+    alertaMembresia = `<div style="background:#FEF2F2;border:1.5px solid #E3000F;border-radius:8px;padding:.5rem .8rem;margin:.5rem 0;font-size:.8rem;color:#E3000F;font-weight:700;">⚠️ SIN MEMBRESÍA ACTIVA — Requiere pago</div>`;
+  } else {
+    const diasRestantes = Math.ceil((new Date(limpiarFecha(pago.fechaFin)+'T00:00:00') - new Date()) / (1000*60*60*24));
+    if (diasRestantes <= 5) {
+      alertaMembresia = `<div style="background:#FFFBEB;border:1.5px solid #F59E0B;border-radius:8px;padding:.5rem .8rem;margin:.5rem 0;font-size:.8rem;color:#B45309;font-weight:700;">⚠️ Membresía vence en ${diasRestantes} día(s) — ${formatDateNice(pago.fechaFin)}</div>`;
+    }
+  }
+
+  // ── Verificar cumpleaños ──
+  const hoy2 = new Date();
+  const fnac = limpiarFecha(m.fechaNac)||'';
+  let esCumple = false;
+  let cumpleHtml = '';
+  if (fnac) {
+    const [,fmes,fdia] = fnac.split('-').map(Number);
+    if (fmes === hoy2.getMonth()+1 && fdia === hoy2.getDate()) {
+      esCumple = true;
+      const parts2 = fnac.split('-').map(Number);
+      const edad2 = hoy2.getFullYear() - parts2[0];
+      cumpleHtml = `<div style="background:linear-gradient(135deg,#E3000F,#8B0000);border-radius:8px;padding:.6rem;margin:.5rem 0;color:#fff;font-weight:900;font-size:.85rem;letter-spacing:.05em;">
+        🎂 ¡FELIZ CUMPLEAÑOS! HOY CUMPLES ${edad2} AÑOS 🎉
+      </div>`;
+    }
+  }
+
+  // ── Detectar horario activo ──
+  const horaActualP = new Date();
+  const horaMinutosP = horaActualP.getHours()*60 + horaActualP.getMinutes();
+  const diaActualP = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][horaActualP.getDay()];
+  const todosHorariosP = DB.get('horarios',[]).filter(h => h.activo !== false);
+  let horarioDetP = null;
+  for (const h of todosHorariosP) {
+    const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+    const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+    const diasH = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
+    const diaOk = diasH.some(d => d.trim().toUpperCase() === diaActualP);
+    if (diaOk && horaMinutosP >= ih*60+im-30 && horaMinutosP <= fh*60+fm+30) {
+      horarioDetP = h; break;
+    }
+  }
+  let alertaHorario = '';
+  if (!horarioDetP) {
+    alertaHorario = `<div style="background:#FEF2F2;border:1.5px solid #E3000F;border-radius:8px;padding:.45rem .7rem;margin:.4rem 0;font-size:.72rem;color:#E3000F;font-weight:700;">⚠️ No hay horario activo — pide a tu instructor que lo dé de alta</div>`;
+  } else {
+    alertaHorario = `<div style="background:#F0FDF4;border:1.5px solid #22C55E;border-radius:8px;padding:.45rem .7rem;margin:.4rem 0;font-size:.72rem;color:#16A34A;font-weight:700;">🕐 ${horarioDetP.nombre} · ${horarioDetP.horaInicio}–${horarioDetP.horaFin}</div>`;
+  }
+
+  // ── Pantalla de confirmación ──
+  const inicial = m.nombre[0].toUpperCase();
+  result.innerHTML = `
+    <div style="background:#fff;border:2px solid ${esCumple ? '#F59E0B' : '#E3000F'};border-radius:14px;padding:1rem;text-align:center;box-shadow:0 4px 20px rgba(227,0,15,.15);">
+      <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,${esCumple ? '#F59E0B,#D97706' : '#E3000F,#8B0000'});display:flex;align-items:center;justify-content:center;font-size:${esCumple ? '1.8' : '1.5'}rem;font-weight:900;color:#fff;margin:0 auto .6rem;">${esCumple ? '🎂' : inicial}</div>
+      <div style="font-size:1.1rem;font-weight:900;text-transform:uppercase;color:#111;">${m.nombre}</div>
+      <div style="font-size:.72rem;color:#888;margin:.2rem 0 .3rem;">¿Eres tú? Confirma tu entrada</div>
+      ${alertaHorario}
+      ${cumpleHtml}
+      ${alertaMembresia}
+      <div style="display:flex;gap:.6rem;margin-top:.7rem;justify-content:center;">
+        <button onclick="checkinClear()" style="flex:1;padding:.6rem;border:1.5px solid #ddd;border-radius:8px;background:#fff;font-size:.85rem;font-weight:700;cursor:pointer;color:#666;">✗ NO SOY YO</button>
+        <button onclick="confirmarCheckin()" style="flex:1;padding:.6rem;border:none;border-radius:8px;background:#E3000F;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;">✓ CONFIRMAR</button>
+      </div>
+    </div>`;
+  window._checkinMiembro = m;
+  window._checkinPago = pago;
+  window._horarioDetP = horarioDetP;
+}
+
+function confirmarCheckin() {
+  const m = window._checkinMiembro;
+  const pago = window._checkinPago;
+  const result = document.getElementById('checkinResult');
+  if (!m) { checkinClear(); return; }
   if (!pago) {
     result.innerHTML = `<div class="alert alert-warn">⚠ ${m.nombre} — SIN MEMBRESÍA ACTIVA</div>`;
     setTimeout(checkinClear, 4000);
     return;
   }
-  // Duplicate check (same day)
+  // Permitir múltiples checkins por día (diferentes turnos)
   const today = fmtDate(new Date());
   const att   = DB.get('attendance', []);
-  const ya    = att.find(a => String(a.memberId)===String(m.id) && limpiarFecha(a.fecha)===today);
-  if (ya) {
-    result.innerHTML = `<div class="alert alert-info">ℹ ${m.nombre} ya registró entrada hoy a las ${limpiarHora(ya.hora)}</div>`;
-    setTimeout(checkinClear, 2500);
-    return;
-  }
 
   // Validar horario asignado
   const hs = getHorarioStatus(m);
@@ -3029,35 +3100,18 @@ function processCheckin() {
 
   const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
 
-  // Detectar horario activo por hora actual — no el asignado en perfil
-  const horaActual = new Date();
-  const horaH = horaActual.getHours();
-  const horaM = horaActual.getMinutes();
-  const horaMinutos = horaH * 60 + horaM;
-  const diaActual = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][horaActual.getDay()];
-  const todosHorarios = DB.get('horarios',[]).filter(h => h.activo !== false);
-  
-  let horarioDetectado = null;
-  for (const h of todosHorarios) {
-    const ini = limpiarHora(h.horaInicio);
-    const fin = limpiarHora(h.horaFin);
-    const [ih, im] = ini.split(':').map(Number);
-    const [fh, fm] = fin.split(':').map(Number);
-    const iniMin = ih * 60 + im;
-    const finMin = fh * 60 + fm;
-    const diasH = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-    const diaOk = diasH.some(d => d.trim().toUpperCase() === diaActual);
-    // Detectar si hora actual está dentro ±30 min del horario
-    if (diaOk && horaMinutos >= iniMin - 30 && horaMinutos <= finMin + 30) {
-      horarioDetectado = h;
-      break;
-    }
-  }
+  // Usar horario detectado en processCheckin
+  const horarioDetectado = window._horarioDetP || null;
 
-  // Si no detectó horario activo, bloquear check-in
-  if (!horarioDetectado) {
-    result.innerHTML = `<div class="alert alert-error">❌ No hay clase activa en este momento.<br><small style="font-size:.75rem;">Verifica el horario con tu instructor.</small></div>`;
-    setTimeout(checkinClear, 3500);
+  // Validar si ya checó en este mismo horario hoy
+  const yaEnEsteHorario = horarioDetectado && att.find(a =>
+    String(a.memberId) === String(m.id) &&
+    limpiarFecha(a.fecha) === today &&
+    a.horarioId === horarioDetectado.id
+  );
+  if (yaEnEsteHorario) {
+    result.innerHTML = `<div class="alert alert-info">ℹ️ ${m.nombre} ya registró entrada en <strong>${horarioDetectado.nombre}</strong> hoy a las ${limpiarHora(yaEnEsteHorario.hora)}</div>`;
+    setTimeout(checkinClear, 3000);
     return;
   }
 
@@ -3065,7 +3119,7 @@ function processCheckin() {
     id:'A'+Date.now(), memberId:m.id, memberName:m.nombre,
     plan:pago.plan, fecha:today, hora,
     horarioId:     horarioDetectado ? horarioDetectado.id    : null,
-    horarioNombre: horarioDetectado ? horarioDetectado.nombre : null
+    horarioNombre: horarioDetectado ? horarioDetectado.nombre : 'Sin horario'
   };
   att.push(reg);
   DB.set('attendance', att);
@@ -3073,6 +3127,28 @@ function processCheckin() {
   result.innerHTML = `<div class="alert alert-success">✅ ¡BIENVENIDO ${m.nombre.toUpperCase()}! — ${hora}</div>${horarioHtml}`;
   renderAttendanceList();
   setTimeout(checkinClear, 3200);
+}
+
+
+function registrarCheckinSinHorario() {
+  const m     = window._checkinMiembro;
+  const pago  = window._checkinPago;
+  const result = document.getElementById('checkinResult');
+  if (!m || !pago) { checkinClear(); return; }
+  const today = fmtDate(new Date());
+  const hora  = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  const att   = DB.get('attendance', []);
+  const reg   = {
+    id:'A'+Date.now(), memberId:m.id, memberName:m.nombre,
+    plan:pago.plan, fecha:today, hora,
+    horarioId: null, horarioNombre: 'Sin horario asignado'
+  };
+  att.push(reg);
+  DB.set('attendance', att);
+  syncRecord('saveAttendance', reg);
+  result.innerHTML = `<div class="alert alert-success">✅ ¡BIENVENIDO ${m.nombre.toUpperCase()}! — ${hora}<br><small style="font-size:.75rem;opacity:.8;">Pide a tu instructor que te asigne un horario</small></div>`;
+  renderAttendanceList();
+  setTimeout(checkinClear, 3500);
 }
 
 function patchAttendanceHorarios() {
