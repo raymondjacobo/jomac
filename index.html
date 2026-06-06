@@ -2448,7 +2448,7 @@ function mostrarOpcionesPDF(pdfUrl, exp) {
 }
 
 function verPDFNuevaPestana(url) {
-  window.open(url || window._vencPdfUrl, '_blank');
+  abrirWA(url || window._vencPdfUrl);
 }
 
 function compartirPorWhatsApp() {
@@ -2463,7 +2463,7 @@ function compartirPorWhatsApp() {
   });
   msg += '\n─────────────────────\n_JOMAC Entrenamiento Funcional_';
   const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
-  window.open(url, '_blank');
+  abrirWA(url);
 }
 
 function openModal(id) {
@@ -3987,6 +3987,13 @@ function guardarCredencialImg() {
   }).catch(() => toast('No se pudo generar la imagen','error'));
 }
 
+
+function abrirWA(url) {
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
 function compartirCredencialWA() {
   const el = document.getElementById('cred-card');
   if (!el || !el.children.length) { toast('Sin credencial que compartir','warning'); return; }
@@ -4006,7 +4013,7 @@ function compartirCredencialWA() {
       }
       const url = canvas.toDataURL('image/png');
       const a = document.createElement('a'); a.href=url; a.download='credencial-jomac.png'; a.click();
-      setTimeout(()=>window.open('https://wa.me/?text='+encodeURIComponent('💪 Mi credencial JOMAC Entrenamiento Funcional'),'_blank'),500);
+      setTimeout(()=>abrirWA('https://wa.me/?text='),500);
     });
   }).catch(() => toast('No se pudo generar la imagen','error'));
 }
@@ -4262,7 +4269,7 @@ function compartirPDFWhatsApp(pdfResult, mensaje) {
   }
   // Fallback: abrir WhatsApp con mensaje
   const texto = encodeURIComponent(mensaje + '\n\nEl PDF ha sido descargado en tu dispositivo.');
-  window.open('https://wa.me/?text=' + texto, '_blank');
+  abrirWA('https://wa.me/?text=');
 }
 
 function exportReportePagosPDF(compartir=false) {
@@ -4816,10 +4823,16 @@ function enviarPostalDirecto(memberId) {
   const msg = '¡FELIZ CUMPLEAÑOS ' + nombre.toUpperCase() + '! ' +
     'Hoy cumples ' + edad + ' años. ' +
     '¡Sigue entrenando fuerte! ' +
-    'Tu familia JOMAC Entrenamiento Funcional te desea un excelente día.';
+    'Tu familia JOMAC Entrenamiento Funcional te desea un excelente dia.';
   const url = tel ? 'https://wa.me/52' + tel + '?text=' + encodeURIComponent(msg)
                   : 'https://wa.me/?text=' + encodeURIComponent(msg);
-  location.href = url;
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 function abrirPostalCumpleId(memberId) {
@@ -5068,7 +5081,7 @@ function compartirPostalCumple() {
   if (tel) {
     descargarPostalCumple();
     const waUrl = `https://wa.me/${tel}?text=${encodeURIComponent(txt)}`;
-    setTimeout(() => window.open(waUrl, '_blank'), 500);
+    setTimeout(() => abrirWA(waUrl), 500);
     return;
   }
 
@@ -5082,14 +5095,14 @@ function compartirPostalCumple() {
           return;
         } catch(e) {}
       }
-      window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank');
+      abrirWA(`https://wa.me/?text=${encodeURIComponent(txt)}`);
     }, 'image/jpeg', 0.94);
     return;
   }
 
   // Fallback: descargar + WA sin número
   descargarPostalCumple();
-  setTimeout(() => window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank'), 500);
+  setTimeout(() => abrirWA(`https://wa.me/?text=${encodeURIComponent(txt)}`), 500);
 }
 
 function mostrarReciboModal(pago) {
@@ -5384,7 +5397,7 @@ function compartirWhatsApp() {
       `🆔 Folio: ${pago.id}\n\n` +
       `_(Adjunta la imagen que se descargó)_`
     );
-    window.open('https://wa.me/?text=' + txt, '_blank');
+    abrirWA('https://wa.me/?text=');
   }, 800);
 }
 
