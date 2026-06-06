@@ -4811,23 +4811,13 @@ function abrirPostalCumple(el) {
 
 
 function enviarPostalDirecto(memberId) {
-  alert('WA: '+memberId);
   const members = DB.get('members',[]);
   const m = members.find(x => String(x.id) === String(memberId));
-  if (!m) { toast('Miembro no encontrado: '+memberId,'error'); return; }
-  const hoy = new Date();
-  const fechaNac = limpiarFecha(m.fechaNac) || '2000-01-01';
-  const parts = fechaNac.split('-').map(Number);
-  const edad = hoy.getFullYear() - parts[0] - ((hoy.getMonth()+1 < parts[1] || (hoy.getMonth()+1===parts[1] && hoy.getDate()<parts[2])) ? 1 : 0);
+  if (!m) return;
   const nombre = m.nombre.split(' ')[0];
   const tel = (m.tel || '').replace(/[^0-9]/g,'');
-  const msg = '¡FELIZ CUMPLEAÑOS ' + nombre.toUpperCase() + '! ' +
-    'Hoy cumples ' + edad + ' años. ' +
-    '¡Sigue entrenando fuerte! ' +
-    'Tu familia JOMAC Entrenamiento Funcional te desea un excelente dia.';
-  const url = tel ? 'https://wa.me/52' + tel + '?text=' + encodeURIComponent(msg)
-                  : 'https://wa.me/?text=' + encodeURIComponent(msg);
-  window.open(url, '_blank');
+  const msg = encodeURIComponent('Feliz Cumpleanos ' + nombre + '! Tu familia JOMAC te desea un excelente dia.');
+  window.open(tel ? 'https://wa.me/52'+tel+'?text='+msg : 'https://wa.me/?text='+msg, '_blank');
 }
 
 function abrirPostalCumpleId(memberId) {
