@@ -4294,7 +4294,13 @@ function exportReporteAsistenciaPDF(compartir=false) {
   const rows = [];
   document.querySelectorAll('#raTabla tr').forEach(tr => {
     const tds = tr.querySelectorAll('td');
-    if (tds.length >= 5) rows.push([tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(), tds[3].textContent.trim(), tds[4].textContent.trim().replace(/[^\x00-\x7F\xC0-\xFF]/g, '').trim()]);
+    if (tds.length >= 5) {
+      // tds[2] tiene avatar + nombre, extraer solo el span con el nombre
+      const avatarDiv = tds[2].querySelector('.member-avatar');
+      let nombre = tds[2].textContent.trim();
+      if (avatarDiv) nombre = nombre.replace(avatarDiv.textContent.trim(), '').trim();
+      rows.push([tds[0].textContent.trim(), tds[1].textContent.trim(), nombre, tds[3].textContent.trim(), tds[4].textContent.trim().replace(/[^\x00-\x7F\xC0-\xFF]/g, '').trim()]);
+    }
   });
   if (!rows.length) { toast('Sin datos para exportar','warning'); return; }
   const result = buildReportePDF(
