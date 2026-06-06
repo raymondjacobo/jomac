@@ -1853,9 +1853,31 @@ async function restaurarAlIniciar() {
 
     if (json && json.ok && json.data) {
       const d = json.data;
-      if (d.members)      DB.set('members',      d.members);
-      if (d.payments)     DB.set('payments',      d.payments);
-      if (d.attendance)   DB.set('attendance',    d.attendance);
+      if (d.members) {
+      d.members = d.members.map(m => ({
+        ...m,
+        fechaNac: limpiarFecha(m.fechaNac),
+        fechaReg: limpiarFecha(m.fechaReg)
+      }));
+      DB.set('members', d.members);
+    }
+      if (d.payments) {
+      d.payments = d.payments.map(p => ({
+        ...p,
+        fechaPago:   limpiarFecha(p.fechaPago),
+        fechaInicio: limpiarFecha(p.fechaInicio),
+        fechaFin:    limpiarFecha(p.fechaFin)
+      }));
+      DB.set('payments', d.payments);
+    }
+      if (d.attendance) {
+      d.attendance = d.attendance.map(a => ({
+        ...a,
+        fecha: limpiarFecha(a.fecha),
+        hora:  limpiarHora(a.hora)
+      }));
+      DB.set('attendance', d.attendance);
+    }
       if (d.horarios) {
         d.horarios = d.horarios.map(h => ({
           ...h,
@@ -2578,7 +2600,7 @@ function editMiembro() {
   document.getElementById('mnPin').value      = m.pin;
   const ptEl = document.getElementById('mnPlanTipo'); if(ptEl) ptEl.value = m.planTipo||'mes';
   document.getElementById('mnNotas').value    = m.notas||'';
-  document.getElementById('mnFechaNac').value  = m.fechaNac||'';
+  document.getElementById('mnFechaNac').value  = limpiarFecha(m.fechaNac)||'';
   document.getElementById('mnGenero').value    = m.genero||'';
   document.getElementById('mnPassword').value  = '';
   const _pwStatus = document.getElementById('mnPasswordStatus');
