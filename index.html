@@ -2066,6 +2066,7 @@ const MEMBER_NAV = [
   { section: 'MI CUENTA' },
   { id:'perfil',      label:'Mi Perfil',    icon:'👤', page:'pagePerfil' },
   { id:'mispagos',    label:'Mis Pagos',    icon:'💳', page:'pageMisPagos' },
+  { id:'credencial',  label:'Mi Credencial',icon:'🪪', page:'pageCredencial' },
   { id:'checkin',     label:'Check-in',     icon:'✅', page:'pageCheckin' },
   { section: 'COMUNIDAD' },
   { id:'cumpleanios', label:'Cumpleaños',   icon:'🎂', page:'pageCumpleanios' },
@@ -2117,7 +2118,7 @@ function navigateTo(id) {
   const ni = document.getElementById('nav_'+id);
   if (ni) ni.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  const navMap = [...ADMIN_NAV,...MEMBER_NAV].filter(x=>x.id);
+  const navMap = [...ADMIN_NAV,...INSTRUCTOR_NAV,...MEMBER_NAV].filter(x=>x.id);
   const item   = navMap.find(x=>x.id===id);
   if (item) {
     document.getElementById(item.page).classList.add('active');
