@@ -3894,7 +3894,7 @@ function renderCredencial(memberId) {
   const inicial = miembro.nombre ? miembro.nombre[0].toUpperCase() : '?';
 
   el.innerHTML = `
-    <div style="width:320px;font-family:'Segoe UI',Arial,sans-serif;">
+    <div style="width:300px;font-family:'Segoe UI',Arial,sans-serif;margin:0 auto;">
 
       <!-- ══ CREDENCIAL DIGITAL JOMAC ══ -->
       <div style="border-radius:24px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.5);background:#0d0d0d;position:relative;">
@@ -3926,7 +3926,7 @@ function renderCredencial(memberId) {
         </div>
 
         <!-- Body blanco -->
-        <div style="background:#fff;padding:.8rem 1.3rem 1rem;position:relative;">
+        <div style="background:#fff;padding:.8rem 1.5rem 1rem;position:relative;">
           <div style="position:absolute;right:-10px;top:50%;transform:translateY(-50%);opacity:.05;font-size:7rem;font-weight:900;color:#E3000F;pointer-events:none;line-height:1;">J</div>
 
           <!-- Nombre y badge -->
@@ -3939,7 +3939,7 @@ function renderCredencial(memberId) {
           ${[
             ['N° de Miembro', miembro.id],
             ['Miembro desde', formatDateNice(miembro.fechaReg)||'—'],
-          ].map(([l,v]) => '<div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid #f0f0f0;"><span style="color:#888;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600;">'+l+'</span><span style="color:#111;font-size:.7rem;font-weight:700;">'+v+'</span></div>').join('')}
+          ].map(([l,v]) => '<div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid #f0f0f0;gap:.5rem;"><span style="color:#888;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600;flex-shrink:0;">'+l+'</span><span style="color:#111;font-size:.7rem;font-weight:700;text-align:right;">'+v+'</span></div>').join('')}
 
           <!-- Estado -->
           <div style="margin-top:.6rem;background:${pago ? '#f0fdf4' : '#fef2f2'};border:1.5px solid ${pago ? '#22C55E' : '#E3000F'};border-radius:8px;padding:.4rem .8rem;display:flex;align-items:center;gap:.4rem;">
@@ -3974,7 +3974,13 @@ function verCredencialMiembro(memberId) {
 function guardarCredencialImg() {
   const el = document.getElementById('cred-card');
   if (!el || !el.children.length) { toast('Sin credencial que guardar','warning'); return; }
-  html2canvas(el, { scale:3, useCORS:true, backgroundColor:null }).then(canvas => {
+  // Capturar el primer hijo (la tarjeta real) con margen extra
+  const card = el.querySelector('div');
+  const target = card || el;
+  html2canvas(target, { 
+    scale:3, useCORS:true, backgroundColor:'#f5f5f5',
+    x: -8, y: -8, width: target.offsetWidth + 16, height: target.offsetHeight + 16
+  }).then(canvas => {
     const url = canvas.toDataURL('image/png');
     const a = document.createElement('a');
     a.href = url; a.download = 'credencial-jomac.png'; a.click();
@@ -3984,7 +3990,12 @@ function guardarCredencialImg() {
 function compartirCredencialWA() {
   const el = document.getElementById('cred-card');
   if (!el || !el.children.length) { toast('Sin credencial que compartir','warning'); return; }
-  html2canvas(el, { scale:3, useCORS:true, backgroundColor:null }).then(canvas => {
+  const card2 = el.querySelector('div');
+  const target2 = card2 || el;
+  html2canvas(target2, { 
+    scale:3, useCORS:true, backgroundColor:'#f5f5f5',
+    x: -8, y: -8, width: target2.offsetWidth + 16, height: target2.offsetHeight + 16
+  }).then(canvas => {
     canvas.toBlob(blob => {
       if (navigator.share && navigator.canShare) {
         const file = new File([blob], 'credencial-jomac.png', { type:'image/png' });
