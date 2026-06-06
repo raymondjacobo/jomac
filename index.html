@@ -2016,6 +2016,9 @@ const INSTRUCTOR_NAV = [
   { id:'pagos',      label:'Pagos',       icon:'💳', page:'pagePagos' },
   { id:'asistencia', label:'Asistencia',  icon:'📋', page:'pageAsistencia' },
   { id:'horarios',   label:'Horarios',    icon:'🕐', page:'pageHorarios' },
+  { section: 'REPORTES' },
+  { id:'reportePagos',      label:'Rep. Pagos',      icon:'📈', page:'pageReportePagos' },
+  { id:'reporteAsistencia', label:'Rep. Asistencia',  icon:'📅', page:'pageReporteAsistencia' },
 ];
 
 const MEMBER_NAV = [
@@ -2083,7 +2086,7 @@ function navigateTo(id) {
   if (id==='dashboard')  loadDashboard();
   if (id==='miembros')   renderMiembros();
   if (id==='pagos')      { renderPagos(); loadPagoKPIs(); }
-  if (id==='asistencia') { setTodayFilter(); renderAsistencia(); }
+  if (id==='asistencia') { setTodayFilter(); setTimeout(renderAsistencia, 0); }
   if (id==='horarios')   { renderHorarios(); populateHInstructorSelect(); }
   if (id==='instructores') renderInstructores();
   if (id==='reportePagos')     { initReporteFechas(); renderReportePagos(); }
@@ -3619,7 +3622,12 @@ function horarioNombreById(id) {
   const h = DB.get('horarios',[]).find(x=>x.id===id);
   return h ? `${h.nombre} ${h.horaInicio}–${h.horaFin}` : '—';
 }
-function fmtDate(d) { return d.toISOString().split('T')[0]; }
+function fmtDate(d) {
+  const y  = d.getFullYear();
+  const m  = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dd;
+}
 function formatDateNice(str) {
   if (!str) return '—';
   const [y,m,d] = str.split('-');
