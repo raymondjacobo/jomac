@@ -4811,6 +4811,7 @@ function abrirPostalCumple(el) {
 
 
 function enviarPostalDirecto(memberId) {
+  alert('WA: '+memberId);
   const members = DB.get('members',[]);
   const m = members.find(x => String(x.id) === String(memberId));
   if (!m) { toast('Miembro no encontrado: '+memberId,'error'); return; }
