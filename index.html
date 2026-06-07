@@ -2407,7 +2407,11 @@ function renderChartDiario() {
     const f = limpiarFecha(a.fecha);
     if (!f) return;
     const [y,m,d] = f.split('-').map(Number);
-    if (y===anio && m===mes+1 && d>=1 && d<=diasEnMes) sets[d-1].add(a.memberId);
+    if (y===anio && m===mes+1 && d>=1 && d<=diasEnMes) {
+      // clave única = nombre normalizado para evitar duplicados por tipo de ID
+      const clave = String(a.memberName || a.memberId || '').trim().toLowerCase();
+      sets[d-1].add(clave);
+    }
   });
   const conteos = sets.map(s => s.size);
   const maxVal = Math.max(...conteos, 1);
@@ -2457,7 +2461,12 @@ function renderChartAsistencias() {
     const f = limpiarFecha(a.fecha);
     if (!f) return;
     const [y, m] = f.split('-').map(Number);
-    if (y === anio && m >= 1 && m <= 12) sets[m-1].add(f+'_'+a.memberId);
+    if (y === anio && m >= 1 && m <= 12) {
+      // clave única = fecha + nombre (normalizado) para evitar duplicados por tipo de ID
+      // Solo nombre — mismo miembro en varios días cuenta como 1
+      const clave = String(a.memberName || a.memberId || '').trim().toLowerCase();
+      sets[m-1].add(clave);
+    }
   });
   sets.forEach((s,i) => { conteos[i] = s.size; });
 
