@@ -1174,12 +1174,13 @@
       <div class="table-wrap" style="margin-bottom:1.5rem;">
         <div class="table-header">
           <div class="table-title">HORARIOS DEL GYM</div>
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
             <select id="filtroHorarioDia" class="config-input" style="width:150px;" onchange="renderHorarios()">
               <option value="">TODOS LOS DÍAS</option>
               <option>Lunes</option><option>Martes</option><option>Miércoles</option>
               <option>Jueves</option><option>Viernes</option><option>Sábado</option><option>Domingo</option>
             </select>
+            <button class="btn-secondary" onclick="abrirReporteHorarios()" style="font-size:.78rem;padding:.4rem .9rem;border-color:var(--red);color:var(--red);white-space:nowrap;">📋 REPORTE</button>
           </div>
         </div>
         <div id="horariosGrid" style="padding:1.2rem;"></div>
@@ -2288,6 +2289,157 @@ function loadDashboard() {
 // MIEMBROS
 // ════════════════════════════════════
 
+
+function abrirReporteHorarios() {
+  const horarios = DB.get('horarios', []);
+  const instructores = DB.get('instructores', []);
+  const members = DB.get('members', []);
+  const preview = document.getElementById('reporteHorariosPreview');
+  if (!preview) return;
+
+  const hoy = new Date();
+  const fechaHoy = hoy.toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
+  const dias = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+
+  let rows = '';
+  horarios.forEach((h, i) => {
+    const inst = instructores.find(x => x.id === h.instructorId);
+    const instNombre = inst ? inst.nombre : '—';
+    const diasArr = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
+    const diasStr = diasArr.map(d => d.trim()).join(', ');
+    const miembrosCount = members.filter(m => m.horarioId === h.id && m.activo !== false).length;
+    const estado = h.activo === false
+      ? '<span style="color:#E3000F;font-weight:700;">INACTIVO</span>'
+      : '<span style="color:#16A34A;font-weight:700;">ACTIVO</span>';
+    rows += `<tr style="border-bottom:1px solid #f0f0f0;">
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${i+1}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;font-weight:700;">${h.nombre||'—'}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${diasStr||'—'}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${limpiarHora(h.horaInicio)||'—'}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${limpiarHora(h.horaFin)||'—'}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${instNombre}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;text-align:center;">${h.cupo||'—'}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;text-align:center;">${miembrosCount}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${estado}</td>
+    </tr>`;
+  });
+
+  const logoEl = document.querySelector('img[alt="JOMAC"]');
+  const logoSrc = logoEl ? logoEl.src : '';
+
+  preview.innerHTML = `
+    <div id="reporteHorariosDoc" style="font-family:'Segoe UI',Arial,sans-serif;background:#fff;padding:1rem;">
+      <div style="background:#E3000F;padding:.8rem 1rem;border-radius:8px 8px 0 0;display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+        ${logoSrc ? `<img src="${logoSrc}" style="height:40px;width:auto;filter:brightness(0) invert(1);"/>` : ''}
+        <div>
+          <div style="color:#fff;font-size:1rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">JOMAC ENTRENAMIENTO FUNCIONAL</div>
+          <div style="color:rgba(255,255,255,.8);font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;">REPORTE DE HORARIOS — ${fechaHoy}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem;">
+        ${[
+          ['Total Horarios', horarios.length, '#111'],
+          ['Activos', horarios.filter(h=>h.activo!==false).length, '#16A34A'],
+          ['Inactivos', horarios.filter(h=>h.activo===false).length, '#E3000F'],
+        ].map(([l,v,c]) => `<div style="background:#f8f8f8;border-radius:6px;padding:.5rem;text-align:center;">
+          <div style="font-size:.55rem;color:#888;text-transform:uppercase;letter-spacing:.08em;">${l}</div>
+          <div style="font-size:1.4rem;font-weight:900;color:${c};">${v}</div>
+        </div>`).join('')}
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#E3000F;">
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.6rem;">#</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.6rem;">NOMBRE</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.6rem;">DÍAS</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.6rem;">INICIO</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.6rem;">FIN</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.6rem;">INSTRUCTOR</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:center;font-size:.6rem;">CUPO</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:center;font-size:.6rem;">INSCRITOS</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.6rem;">ESTADO</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="margin-top:1rem;border-top:1px solid #eee;padding-top:.5rem;display:flex;justify-content:space-between;">
+        <span style="font-size:.6rem;color:#aaa;">JOMAC Gym Manager</span>
+        <span style="font-size:.6rem;color:#aaa;">Total: ${horarios.length} horarios</span>
+      </div>
+    </div>`;
+
+  openModal('modalReporteHorarios');
+}
+
+function exportReporteHorariosPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'landscape' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+
+  doc.setFillColor(227,0,15);
+  doc.rect(0,0,W,22,'F');
+
+  const logoEl = document.querySelector('img[alt="JOMAC"]');
+  if (logoEl && logoEl.src) {
+    try { doc.addImage(logoEl.src,'PNG',8,3,30,16); } catch(e) {}
+  }
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(255,255,255);
+  doc.text('JOMAC ENTRENAMIENTO FUNCIONAL', 44, 11);
+  doc.setFontSize(7); doc.setFont('helvetica','normal');
+  doc.text('REPORTE DE HORARIOS — ' + new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase(), 44, 17);
+
+  const horarios = DB.get('horarios', []);
+  const instructores = DB.get('instructores', []);
+  const members = DB.get('members', []);
+  const headers = ['#','NOMBRE','DÍAS','INICIO','FIN','INSTRUCTOR','CUPO','INSCRITOS','ESTADO'];
+  const colW = [8, 45, 55, 16, 16, 40, 14, 18, 18];
+
+  let y = 30;
+  doc.setFillColor(227,0,15);
+  doc.rect(10, y-5, W-20, 7, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(255,255,255);
+  let x = 10;
+  headers.forEach((h,i) => { doc.text(h, x+1, y); x += colW[i]; });
+  y += 4;
+
+  horarios.forEach((h, idx) => {
+    if (y > H-15) { doc.addPage(); y = 20; }
+    if (idx%2===0) { doc.setFillColor(248,248,248); doc.rect(10,y-3.5,W-20,6,'F'); }
+    const inst = instructores.find(x=>x.id===h.instructorId);
+    const diasArr = Array.isArray(h.dias)?h.dias:(h.dias||'').split(',');
+    const miembrosCount = members.filter(m=>m.horarioId===h.id&&m.activo!==false).length;
+    const row = [
+      String(idx+1),
+      (h.nombre||'—').substring(0,28),
+      diasArr.map(d=>d.trim()).join(',').substring(0,30),
+      limpiarHora(h.horaInicio)||'—',
+      limpiarHora(h.horaFin)||'—',
+      (inst?inst.nombre:'—').substring(0,24),
+      String(h.cupo||'—'),
+      String(miembrosCount),
+      h.activo===false?'INACTIVO':'ACTIVO'
+    ];
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
+    x = 10;
+    row.forEach((val,i) => {
+      if (val==='ACTIVO') doc.setTextColor(22,163,74);
+      else if (val==='INACTIVO') doc.setTextColor(227,0,15);
+      else doc.setTextColor(30,30,30);
+      doc.text(val, x+1, y); x += colW[i];
+    });
+    y += 6;
+  });
+
+  doc.setTextColor(150,150,150); doc.setFontSize(6);
+  doc.text('JOMAC Gym Manager', 10, H-5);
+  doc.text('Total: '+horarios.length+' horarios', W-10, H-5, {align:'right'});
+  doc.save('Reporte_Horarios_JOMAC.pdf');
+}
+
 function abrirReporteMiembros() {
   const members = DB.get('members', []).filter(m => m.activo !== false);
   const preview = document.getElementById('reporteMiembrosPreview');
@@ -2368,8 +2520,7 @@ function abrirReporteMiembros() {
       </div>
     </div>`;
 
-  const modalEl = document.getElementById('modalReporteMiembros');
-  if (modalEl) { modalEl.style.display='flex'; document.body.style.overflow='hidden'; }
+  openModal('modalReporteMiembros');
 }
 
 function exportReporteMiembrosPDF() {
@@ -2690,7 +2841,11 @@ function compartirPorWhatsApp() {
 }
 
 function openModal(id) {
-  document.getElementById(id).classList.add('open');
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('open');
+  el.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
   if (id==='modalNuevoPago') {
     populatePagoSelect();
     document.getElementById('pagoMiembroPlan').value = '';
@@ -2705,7 +2860,11 @@ function openModal(id) {
   }
 }
 function closeModal(id, keepEditing) {
-  document.getElementById(id).classList.remove('open');
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('open');
+  el.style.display = 'none';
+  document.body.style.overflow = '';
   if (!keepEditing) editingMemberId = null;
 }
 
@@ -5728,16 +5887,31 @@ function ejecutarLimpiarDatos() {
 </script>
 
     <!-- MODAL REPORTE MIEMBROS -->
-    <div class="modal-overlay" id="modalReporteMiembros" style="display:none;">
+    <div class="modal-overlay" id="modalReporteMiembros">
       <div class="modal-box" style="max-width:700px;width:95%;max-height:90vh;overflow-y:auto;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
           <div class="modal-title" style="margin:0;">📋 REPORTE DE MIEMBROS</div>
           <div style="display:flex;gap:.5rem;">
             <button class="btn-primary" onclick="exportReporteMiembrosPDF()" style="font-size:.78rem;padding:.4rem .9rem;">📄 PDF</button>
-            <button class="btn-secondary" onclick="const m=document.getElementById('modalReporteMiembros');if(m){m.style.display='none';document.body.style.overflow=''}" style="font-size:.78rem;padding:.4rem .9rem;">✕ CERRAR</button>
+            <button class="btn-secondary" onclick="closeModal('modalReporteMiembros')" style="font-size:.78rem;padding:.4rem .9rem;">✕ CERRAR</button>
           </div>
         </div>
         <div id="reporteMiembrosPreview"></div>
+      </div>
+    </div>
+
+
+    <!-- MODAL REPORTE HORARIOS -->
+    <div class="modal-overlay" id="modalReporteHorarios">
+      <div class="modal-box" style="max-width:680px;width:95%;max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+          <div class="modal-title" style="margin:0;">📋 REPORTE DE HORARIOS</div>
+          <div style="display:flex;gap:.5rem;">
+            <button class="btn-primary" onclick="exportReporteHorariosPDF()" style="font-size:.78rem;padding:.4rem .9rem;">📄 PDF</button>
+            <button class="btn-secondary" onclick="closeModal('modalReporteHorarios')" style="font-size:.78rem;padding:.4rem .9rem;">✕ CERRAR</button>
+          </div>
+        </div>
+        <div id="reporteHorariosPreview"></div>
       </div>
     </div>
 
