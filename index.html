@@ -1097,6 +1097,15 @@
       <!-- VISTA ADMIN: teclado PIN (kiosco recepción) -->
       <div id="checkinAdminView" style="display:none;">
         <div class="checkin-wrap">
+          <!-- Bloqueo sin horario activo -->
+          <div id="checkinBloqueado" style="display:none;">
+            <div class="checkin-card" style="text-align:center;padding:2rem 1rem;">
+              <div style="font-size:3rem;margin-bottom:.5rem;">🚫</div>
+              <div style="font-family:var(--font-display);font-size:1.6rem;letter-spacing:3px;color:#E3000F;">SIN HORARIO ACTIVO</div>
+              <div style="font-size:.85rem;color:#888;font-family:var(--font-cond);margin-top:.5rem;letter-spacing:1px;">No hay clases programadas en este momento.<br>El check-in está deshabilitado.</div>
+            </div>
+          </div>
+          <div id="checkinTeclado">
           <div class="checkin-card">
             <div class="checkin-title">INGRESA TU PIN</div>
             <div class="checkin-sub">TOCA LOS NÚMEROS PARA MARCAR ASISTENCIA</div>
@@ -1131,6 +1140,7 @@
             </div>
             <div id="attendanceList"></div>
           </div>
+          </div><!-- fin checkinTeclado -->
         </div>
       </div>
     </div>
@@ -3625,7 +3635,7 @@ function processCheckin() {
   }
   let alertaHorario = '';
   if (!horarioDetP) {
-    alertaHorario = `<div style="background:#FEF2F2;border:1.5px solid #E3000F;border-radius:8px;padding:.45rem .7rem;margin:.4rem 0;font-size:.72rem;color:#E3000F;font-weight:700;">⚠️ No hay horario activo — pide a tu instructor que lo dé de alta</div>`;
+    alertaHorario = `<div style="background:#FEF2F2;border:1.5px solid #E3000F;border-radius:8px;padding:.45rem .7rem;margin:.4rem 0;font-size:.72rem;color:#E3000F;font-weight:700;">🚫 No hay horario activo en este momento — Check-in bloqueado</div>`;
   } else {
     alertaHorario = `<div style="background:#F0FDF4;border:1.5px solid #22C55E;border-radius:8px;padding:.45rem .7rem;margin:.4rem 0;font-size:.72rem;color:#16A34A;font-weight:700;">🕐 ${horarioDetP.nombre} · ${horarioDetP.horaInicio}–${horarioDetP.horaFin}</div>`;
   }
@@ -3641,8 +3651,12 @@ function processCheckin() {
       ${cumpleHtml}
       ${alertaMembresia}
       <div style="display:flex;gap:.6rem;margin-top:.7rem;justify-content:center;">
-        <button onclick="checkinClear()" style="flex:1;padding:.6rem;border:1.5px solid #ddd;border-radius:8px;background:#fff;font-size:.85rem;font-weight:700;cursor:pointer;color:#666;">✗ NO SOY YO</button>
-        <button onclick="confirmarCheckin()" style="flex:1;padding:.6rem;border:none;border-radius:8px;background:#E3000F;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;">✓ CONFIRMAR</button>
+        ${horarioDetP ? `
+          <button onclick="checkinClear()" style="flex:1;padding:.6rem;border:1.5px solid #ddd;border-radius:8px;background:#fff;font-size:.85rem;font-weight:700;cursor:pointer;color:#666;">✗ NO SOY YO</button>
+          <button onclick="confirmarCheckin()" style="flex:1;padding:.6rem;border:none;border-radius:8px;background:#E3000F;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;">✓ CONFIRMAR</button>
+        ` : `
+          <button onclick="checkinClear()" style="width:100%;padding:.6rem;border:1.5px solid #ddd;border-radius:8px;background:#fff;font-size:.85rem;font-weight:700;cursor:pointer;color:#666;">✗ CANCELAR</button>
+        `}
       </div>
     </div>`;
   window._checkinMiembro = m;
@@ -3761,6 +3775,25 @@ function renderAttendanceList() {
   if (isMember) {
     renderCheckinMember();
   } else {
+    // Verificar horario activo para kiosco
+    const _ahora   = new Date();
+    const _minNow  = _ahora.getHours()*60 + _ahora.getMinutes();
+    const _diaNow  = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][_ahora.getDay()];
+    const _hors    = DB.get('horarios',[]).filter(h=>h.activo!==false);
+    let _hayH = false;
+    for (const h of _hors) {
+      const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+      const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+      const diasH   = Array.isArray(h.dias)?h.dias:(h.dias||'').split(',');
+      if (diasH.some(d=>d.trim().toUpperCase()===_diaNow) && _minNow>=ih*60+im-30 && _minNow<=fh*60+fm+30) {
+        _hayH=true; break;
+      }
+    }
+    const bloq   = document.getElementById('checkinBloqueado');
+    const teclado= document.getElementById('checkinTeclado');
+    if (bloq)    bloq.style.display    = _hayH ? 'none' : 'block';
+    if (teclado) teclado.style.display = _hayH ? 'block' : 'none';
+
     // Admin: lista del día
     const today = fmtDate(new Date());
     const att   = DB.get('attendance', []).filter(a=>a.fecha===today).reverse();
@@ -3798,6 +3831,34 @@ function renderCheckinMember() {
   const pago  = getActivePago(m.id);
   const hs    = getHorarioStatus(m);
   const card  = document.getElementById('checkinBtnCard');
+
+  // ── Validar horario activo PRIMERO ──
+  const _ahoraM  = new Date();
+  const _minM    = _ahoraM.getHours()*60 + _ahoraM.getMinutes();
+  const _diaM    = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][_ahoraM.getDay()];
+  const _horariosM = DB.get('horarios',[]).filter(h=>h.activo!==false);
+  let _hayHorarioM = false;
+  for (const h of _horariosM) {
+    const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+    const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+    const diasH   = Array.isArray(h.dias)?h.dias:(h.dias||'').split(',');
+    if (diasH.some(d=>d.trim().toUpperCase()===_diaM) && _minM>=ih*60+im-30 && _minM<=fh*60+fm+30) {
+      _hayHorarioM=true; break;
+    }
+  }
+  if (!_hayHorarioM) {
+    card.innerHTML = `
+      <div class="checkin-title" style="font-size:1.6rem;">¡HOLA, ${m.nombre.split(' ')[0].toUpperCase()}!</div>
+      <div style="background:#FEF2F2;border:1.5px solid #E3000F;border-radius:10px;padding:1.2rem;margin:1rem 0;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:.3rem;">🚫</div>
+        <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:2px;color:#E3000F;">SIN HORARIO ACTIVO</div>
+        <div style="font-size:.75rem;color:#888;font-family:var(--font-cond);margin-top:.3rem;letter-spacing:1px;">No hay clases programadas en este momento</div>
+      </div>
+      <div style="font-size:.75rem;color:var(--text-light);font-family:var(--font-cond);letter-spacing:1px;">
+        ${planBadge(pago?pago.plan:'')} ${pago?'· Vence '+formatDateNice(pago.fechaFin):''}
+      </div>`;
+    return;
+  }
 
   // ¿Ya checó hoy?
   const attHoy = att.filter(a => a.memberId===m.id && a.fecha===today);
@@ -3906,6 +3967,22 @@ function renderCheckinMember() {
     return;
   }
 
+  // Detectar si hay horario activo ahora mismo (igual que en el kiosco)
+  const horaAhora = new Date();
+  const minAhora  = horaAhora.getHours()*60 + horaAhora.getMinutes();
+  const diaAhora  = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][horaAhora.getDay()];
+  const todosH    = DB.get('horarios',[]).filter(h => h.activo !== false);
+  let hayHorarioActivo = false;
+  for (const h of todosH) {
+    const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+    const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+    const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
+    const diaOk   = diasH.some(d => d.trim().toUpperCase() === diaAhora);
+    if (diaOk && minAhora >= ih*60+im-30 && minAhora <= fh*60+fm+30) {
+      hayHorarioActivo = true; break;
+    }
+  }
+
   // Listo para checar
   card.innerHTML = `
     <div class="checkin-title" style="font-size:1.6rem;">¡HOLA, ${m.nombre.split(' ')[0].toUpperCase()}!</div>
@@ -3913,6 +3990,7 @@ function renderCheckinMember() {
       ${new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'}).toUpperCase()}
     </div>
     ${horarioInfo}
+    ${hayHorarioActivo ? `
     <button onclick="doMemberCheckin()" style="
       width:100%; padding:1.4rem; margin:.5rem 0 1rem;
       background:var(--red); border:none; border-radius:2px;
@@ -3921,7 +3999,12 @@ function renderCheckinMember() {
       box-shadow:0 6px 30px rgba(227,0,15,0.4);
       transition:all .2s;">
       ✅ REGISTRAR ENTRADA
-    </button>
+    </button>` : `
+    <div style="background:#FEF2F2;border:1.5px solid #E3000F;border-radius:10px;padding:1rem;margin:.5rem 0 1rem;text-align:center;">
+      <div style="font-size:1.8rem;margin-bottom:.3rem;">🚫</div>
+      <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:2px;color:#E3000F;">SIN HORARIO ACTIVO</div>
+      <div style="font-size:.75rem;color:#888;font-family:var(--font-cond);margin-top:.3rem;letter-spacing:1px;">No hay clases programadas en este momento</div>
+    </div>`}
     <div style="font-size:.75rem;color:var(--text-light);font-family:var(--font-cond);letter-spacing:1px;">
       ${planBadge(pago.plan)} · Vence ${formatDateNice(pago.fechaFin)}
     </div>`;
@@ -3947,16 +4030,42 @@ function doMemberCheckin(forzar) {
   const pago  = getActivePago(m.id);
   if (!pago) { toast('Sin membresía activa','error'); return; }
 
+  // Validar horario activo
+  const _horaAhora = new Date();
+  const _minAhora  = _horaAhora.getHours()*60 + _horaAhora.getMinutes();
+  const _diaAhora  = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][_horaAhora.getDay()];
+  const _todosH    = DB.get('horarios',[]).filter(h => h.activo !== false);
+  let _hayHorario  = false;
+  for (const h of _todosH) {
+    const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+    const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+    const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
+    if (diasH.some(d=>d.trim().toUpperCase()===_diaAhora) && _minAhora>=ih*60+im-30 && _minAhora<=fh*60+fm+30) {
+      _hayHorario = true; break;
+    }
+  }
+  if (!_hayHorario) { toast('No hay horario activo en este momento','error'); renderCheckinMember(); return; }
+
   const att  = DB.get('attendance', []);
   const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
   const hs   = getHorarioStatus(m);
 
+  // Usar el horario ACTIVO en este momento, no el asignado al perfil
+  let horarioActivoId = null, horarioActivoNombre = null;
+  for (const h of _todosH) {
+    const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+    const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+    const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
+    if (diasH.some(d=>d.trim().toUpperCase()===_diaAhora) && _minAhora>=ih*60+im-30 && _minAhora<=fh*60+fm+30) {
+      horarioActivoId = h.id; horarioActivoNombre = h.nombre; break;
+    }
+  }
   const reg = {
     id: 'A'+Date.now(),
     memberId: m.id, memberName: m.nombre,
     plan: pago.plan, fecha: today, hora,
-    horarioId: m.horarioId||null,
-    horarioNombre: hs ? hs.horario.nombre : null,
+    horarioId: horarioActivoId,
+    horarioNombre: horarioActivoNombre,
     forzado: forzar ? true : false
   };
   att.push(reg);
