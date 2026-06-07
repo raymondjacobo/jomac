@@ -990,9 +990,12 @@
       <div class="table-wrap">
         <div class="table-header">
           <div class="table-title">TODOS LOS MIEMBROS</div>
-          <div class="search-box">
-            <span>🔍</span>
-            <input type="text" id="searchMiembros" placeholder="Buscar..." oninput="renderMiembros()"/>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+            <div class="search-box">
+              <span>🔍</span>
+              <input type="text" id="searchMiembros" placeholder="Buscar..." oninput="renderMiembros()"/>
+            </div>
+            <button class="btn-secondary" onclick="abrirReporteMiembros()" style="font-size:.78rem;padding:.4rem .9rem;border-color:var(--red);color:var(--red);white-space:nowrap;">📋 REPORTE</button>
           </div>
         </div>
         <table>
@@ -2284,6 +2287,175 @@ function loadDashboard() {
 // ════════════════════════════════════
 // MIEMBROS
 // ════════════════════════════════════
+
+function abrirReporteMiembros() {
+  const members = DB.get('members', []).filter(m => m.activo !== false);
+  const preview = document.getElementById('reporteMiembrosPreview');
+  if (!preview) return;
+
+  const hoy = new Date();
+  const fechaHoy = hoy.toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
+
+  let rows = '';
+  members.forEach((m, i) => {
+    const pago = getActivePago(m.id);
+    const plan = pago ? pago.plan.toUpperCase() : '—';
+    const vence = pago ? formatDateNice(pago.fechaFin) : '—';
+    const estado = pago ? '<span style="color:#16A34A;font-weight:700;">VIGENTE</span>' : '<span style="color:#E3000F;font-weight:700;">VENCIDO</span>';
+    const horarios = DB.get('horarios', []);
+    const horario = horarios.find(h => h.id === m.horarioId);
+    const horNombre = horario ? horario.nombre : '—';
+    rows += `<tr style="border-bottom:1px solid #f0f0f0;">
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${i+1}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;font-weight:700;">${m.nombre}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${m.tel||'—'}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${m.email||'—'}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${formatDateNice(m.fechaNac)||'—'}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${plan}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${vence}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${estado}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${horNombre}</td>
+    </tr>`;
+  });
+
+  const logoEl = document.querySelector('img[alt="JOMAC"]');
+  const logoSrc = logoEl ? logoEl.src : '';
+
+  preview.innerHTML = `
+    <div id="reporteMiembrosDoc" style="font-family:'Segoe UI',Arial,sans-serif;background:#fff;padding:1rem;">
+      <!-- Header -->
+      <div style="background:#E3000F;padding:.8rem 1rem;border-radius:8px 8px 0 0;display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+        ${logoSrc ? `<img src="${logoSrc}" style="height:40px;width:auto;filter:brightness(0) invert(1);"/>` : ''}
+        <div>
+          <div style="color:#fff;font-size:1rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">JOMAC ENTRENAMIENTO FUNCIONAL</div>
+          <div style="color:rgba(255,255,255,.8);font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;">REPORTE DE MIEMBROS — ${fechaHoy}</div>
+        </div>
+      </div>
+      <!-- KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem;">
+        ${[
+          ['Total Miembros', members.length, '#111'],
+          ['Membresías Vigentes', members.filter(m=>getActivePago(m.id)).length, '#16A34A'],
+          ['Membresías Vencidas', members.filter(m=>!getActivePago(m.id)).length, '#E3000F'],
+        ].map(([l,v,c]) => `<div style="background:#f8f8f8;border-radius:6px;padding:.5rem;text-align:center;">
+          <div style="font-size:.55rem;color:#888;text-transform:uppercase;letter-spacing:.08em;">${l}</div>
+          <div style="font-size:1.4rem;font-weight:900;color:${c};">${v}</div>
+        </div>`).join('')}
+      </div>
+      <!-- Tabla -->
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:.72rem;">
+          <thead>
+            <tr style="background:#E3000F;">
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">#</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">NOMBRE</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">TELÉFONO</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">EMAIL</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">NACIMIENTO</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">PLAN</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">VENCIMIENTO</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">ESTADO</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">HORARIO</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <!-- Footer -->
+      <div style="margin-top:1rem;border-top:1px solid #eee;padding-top:.5rem;display:flex;justify-content:space-between;">
+        <span style="font-size:.6rem;color:#aaa;">JOMAC Gym Manager</span>
+        <span style="font-size:.6rem;color:#aaa;">Total: ${members.length} miembros</span>
+      </div>
+    </div>`;
+
+  const modalEl = document.getElementById('modalReporteMiembros');
+  if (modalEl) { modalEl.style.display='flex'; document.body.style.overflow='hidden'; }
+}
+
+function exportReporteMiembrosPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'landscape' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+
+  // Header rojo
+  doc.setFillColor(227,0,15);
+  doc.rect(0,0,W,22,'F');
+
+  // Logo
+  const logoEl = document.querySelector('img[alt="JOMAC"]');
+  if (logoEl && logoEl.src) {
+    try { doc.addImage(logoEl.src,'PNG',8,3,30,16); } catch(e) {}
+  }
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13); doc.setTextColor(255,255,255);
+  doc.text('JOMAC ENTRENAMIENTO FUNCIONAL', 44, 11);
+  doc.setFontSize(7); doc.setFont('helvetica','normal');
+  doc.text('REPORTE DE MIEMBROS — ' + new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase(), 44, 17);
+
+  // Tabla
+  const members = DB.get('members', []).filter(m => m.activo !== false);
+  const headers = ['#','NOMBRE','TELÉFONO','EMAIL','NACIMIENTO','PLAN','VENCIMIENTO','ESTADO','HORARIO'];
+  const colW = [8, 45, 28, 48, 22, 18, 26, 18, 30];
+  const horarios = DB.get('horarios', []);
+
+  let y = 30;
+  // Header tabla
+  doc.setFillColor(227,0,15);
+  doc.rect(10, y-5, W-20, 7, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.setTextColor(255,255,255);
+  let x = 10;
+  headers.forEach((h,i) => { doc.text(h, x+1, y); x += colW[i]; });
+
+  y += 4;
+  doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
+
+  members.forEach((m, idx) => {
+    if (y > H - 15) {
+      doc.addPage();
+      y = 20;
+      doc.setFillColor(227,0,15);
+      doc.rect(10, y-5, W-20, 7, 'F');
+      doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+      x = 10; headers.forEach((h,i) => { doc.text(h, x+1, y); x += colW[i]; });
+      y += 4;
+      doc.setFont('helvetica','normal');
+    }
+
+    if (idx % 2 === 0) { doc.setFillColor(248,248,248); doc.rect(10, y-3.5, W-20, 6, 'F'); }
+    doc.setTextColor(30,30,30);
+    const pago = getActivePago(m.id);
+    const horario = horarios.find(h => h.id === m.horarioId);
+    const row = [
+      String(idx+1),
+      (m.nombre||'').substring(0,28),
+      String(m.tel||'—'),
+      (m.email||'—').substring(0,28),
+      formatDateNice(m.fechaNac)||'—',
+      pago ? pago.plan.toUpperCase() : '—',
+      pago ? formatDateNice(pago.fechaFin)||'—' : '—',
+      pago ? 'VIGENTE' : 'VENCIDO',
+      (horario ? horario.nombre : '—').substring(0,18)
+    ];
+    x = 10;
+    row.forEach((val, i) => {
+      if (val === 'VIGENTE') doc.setTextColor(22,163,74);
+      else if (val === 'VENCIDO') doc.setTextColor(227,0,15);
+      else doc.setTextColor(30,30,30);
+      doc.text(val, x+1, y); x += colW[i];
+    });
+    y += 6;
+  });
+
+  // Footer
+  doc.setTextColor(150,150,150); doc.setFontSize(6);
+  doc.text('JOMAC Gym Manager', 10, H-5);
+  doc.text('Total: '+members.length+' miembros', W-10, H-5, {align:'right'});
+
+  doc.save('Reporte_Miembros_JOMAC.pdf');
+}
+
 function renderMiembros() {
   const q       = (document.getElementById('searchMiembros')?.value||'').toLowerCase();
   const members = DB.get('members', []);
@@ -5554,5 +5726,20 @@ function ejecutarLimpiarDatos() {
 }
 
 </script>
+
+    <!-- MODAL REPORTE MIEMBROS -->
+    <div class="modal-overlay" id="modalReporteMiembros" style="display:none;">
+      <div class="modal-box" style="max-width:700px;width:95%;max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+          <div class="modal-title" style="margin:0;">📋 REPORTE DE MIEMBROS</div>
+          <div style="display:flex;gap:.5rem;">
+            <button class="btn-primary" onclick="exportReporteMiembrosPDF()" style="font-size:.78rem;padding:.4rem .9rem;">📄 PDF</button>
+            <button class="btn-secondary" onclick="const m=document.getElementById('modalReporteMiembros');if(m){m.style.display='none';document.body.style.overflow=''}" style="font-size:.78rem;padding:.4rem .9rem;">✕ CERRAR</button>
+          </div>
+        </div>
+        <div id="reporteMiembrosPreview"></div>
+      </div>
+    </div>
+
 </body>
 </html>
