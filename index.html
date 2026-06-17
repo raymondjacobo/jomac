@@ -3570,15 +3570,65 @@ function renderPagos() {
           color:var(--text-light);cursor:pointer;padding:.3rem .6rem;font-size:.75rem;
           font-family:var(--font-cond);letter-spacing:1px;white-space:nowrap;"
           title="Ver comprobante">🧾 RECIBO</button>
-        ${currentUser && currentUser.type==='admin' ? `<button onclick="deletePago('${p.id}')" style="
-          background:transparent;border:1px solid #FECACA;border-radius:4px;
-          color:var(--red);cursor:pointer;padding:.3rem .5rem;font-size:.75rem;"
-          title="Eliminar pago">🗑</button>` : ''}
+        ${currentUser && currentUser.type==='admin' ? `
+          <button onclick="editarPago('${p.id}')" style="
+            background:transparent;border:1px solid #BFDBFE;border-radius:4px;
+            color:#2563EB;cursor:pointer;padding:.3rem .5rem;font-size:.75rem;"
+            title="Editar pago">✏️</button>
+          <button onclick="deletePago('${p.id}')" style="
+            background:transparent;border:1px solid #FECACA;border-radius:4px;
+            color:var(--red);cursor:pointer;padding:.3rem .5rem;font-size:.75rem;"
+            title="Eliminar pago">🗑</button>` : ''}
       </td>
     </tr>`;
   }).join('');
 }
 
+
+
+function editarPago(id) {
+  const payments = DB.get('payments', []);
+  const p = payments.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('editPagoId').value = p.id;
+  document.getElementById('editPagoMiembro').value = p.memberName;
+  document.getElementById('editPagoFechaInicio').value = limpiarFecha(p.fechaInicio) || limpiarFecha(p.fechaPago) || '';
+  document.getElementById('editPagoFechaFin').value = limpiarFecha(p.fechaFin) || '';
+  document.getElementById('editPagoPlan').value = p.plan || 'mes';
+  document.getElementById('editPagoMonto').value = p.monto || '';
+  document.getElementById('editPagoMetodo').value = p.metodo || 'efectivo';
+  openModal('modalEditarPago');
+}
+
+function recalcularEditFechaFin() {
+  const inicio = document.getElementById('editPagoFechaInicio').value;
+  const plan   = document.getElementById('editPagoPlan').value || 'mes';
+  if (!inicio) return;
+  const fin = calcFin(inicio, plan);
+  document.getElementById('editPagoFechaFin').value = fin;
+}
+
+function guardarEditPago() {
+  const id      = document.getElementById('editPagoId').value;
+  const inicio  = document.getElementById('editPagoFechaInicio').value;
+  const fin     = document.getElementById('editPagoFechaFin').value;
+  const plan    = document.getElementById('editPagoPlan').value;
+  const monto   = Number(document.getElementById('editPagoMonto').value);
+  const metodo  = document.getElementById('editPagoMetodo').value;
+  if (!inicio || !fin) { toast('Ingresa las fechas','error'); return; }
+  if (!monto) { toast('Ingresa el monto','error'); return; }
+
+  const payments = DB.get('payments', []);
+  const idx = payments.findIndex(p => p.id === id);
+  if (idx < 0) return;
+  payments[idx] = { ...payments[idx], plan, monto, metodo, fechaInicio: inicio, fechaFin: fin };
+  DB.set('payments', payments);
+  syncGoogleSheets(true);
+  closeModal('modalEditarPago');
+  renderPagos();
+  loadPagoKPIs();
+  toast('Pago actualizado — vence '+formatDateNice(fin), 'success');
+}
 
 function deletePago(id) {
   if (!confirm('¿Eliminar este pago? Esta acción no se puede deshacer.')) return;
@@ -6256,6 +6306,57 @@ function ejecutarLimpiarDatos() {
           </div>
         </div>
         <div id="reporteHorariosPreview"></div>
+      </div>
+    </div>
+
+
+    <!-- MODAL EDITAR PAGO -->
+    <div class="modal-overlay" id="modalEditarPago">
+      <div class="modal-box" style="max-width:400px;width:95%;">
+        <div class="modal-title">✏️ EDITAR PAGO</div>
+        <div class="field-group">
+          <label>MIEMBRO</label>
+          <input type="text" id="editPagoMiembro" disabled style="background:#f5f5f5;color:#888;"/>
+        </div>
+        <div class="grid-2">
+          <div class="field-group">
+            <label>FECHA INICIO *</label>
+            <input type="date" id="editPagoFechaInicio" onchange="recalcularEditFechaFin()"/>
+          </div>
+          <div class="field-group">
+            <label>FECHA FIN *</label>
+            <input type="date" id="editPagoFechaFin"/>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>PLAN</label>
+          <select id="editPagoPlan" onchange="recalcularEditFechaFin()">
+            <option value="dia">DÍA</option>
+            <option value="semana">SEMANA</option>
+            <option value="mes">MES</option>
+            <option value="anual">ANUAL</option>
+            <option value="cortesia">CORTESÍA</option>
+          </select>
+        </div>
+        <div class="grid-2">
+          <div class="field-group">
+            <label>MONTO $</label>
+            <input type="number" id="editPagoMonto"/>
+          </div>
+          <div class="field-group">
+            <label>MÉTODO</label>
+            <select id="editPagoMetodo">
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="tarjeta">Tarjeta</option>
+            </select>
+          </div>
+        </div>
+        <input type="hidden" id="editPagoId"/>
+        <div style="display:flex;gap:.5rem;margin-top:1rem;">
+          <button class="btn-secondary" onclick="closeModal('modalEditarPago')" style="flex:1;">CANCELAR</button>
+          <button class="btn-primary" onclick="guardarEditPago()" style="flex:1;">💾 GUARDAR</button>
+        </div>
       </div>
     </div>
 
