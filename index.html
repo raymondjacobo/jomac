@@ -1555,9 +1555,16 @@
     </div>
     <div class="grid-2">
       <div class="field-group">
+        <label>FECHA DE INGRESO *</label>
+        <input type="date" id="mnFechaIngreso"/>
+      </div>
+      <div class="field-group">
         <label>FECHA DE NACIMIENTO</label>
         <input type="date" id="mnFechaNac"/>
       </div>
+    </div>
+    <div class="grid-2">
+      <div class="field-group" style="display:none;"><!-- spacer --></div>
       <div class="field-group">
         <label>GÉNERO</label>
         <select id="mnGenero">
@@ -1667,7 +1674,11 @@
         <label>NOTAS</label>
         <input type="text" id="pagoNotas" placeholder="Referencia, observaciones..."/>
       </div>
-      <input type="hidden" id="pagoFechaInicio"/>
+      <div class="field-group">
+        <label>FECHA DE INICIO *</label>
+        <input type="date" id="pagoFechaInicio" onchange="recalcularFechaFin()" style=""/>
+        <div style="font-size:.7rem;color:#888;margin-top:.2rem;" id="pagoFechaInicioHint">Se toma de la fecha de ingreso del miembro</div>
+      </div>
     </div>
 
     <div class="modal-footer">
@@ -2506,7 +2517,7 @@ function abrirReporteHorarios() {
 
   const hoy = new Date();
   const fechaHoy = hoy.toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
-  const dias = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
 
   let rows = '';
   horarios.forEach((h, i) => {
@@ -2670,6 +2681,7 @@ function abrirReporteMiembros() {
       <td style="padding:.4rem .5rem;font-size:.72rem;">${m.tel||'—'}</td>
       <td style="padding:.4rem .5rem;font-size:.72rem;">${m.email||'—'}</td>
       <td style="padding:.4rem .5rem;font-size:.72rem;">${formatDateNice(m.fechaNac)||'—'}</td>
+      <td style="padding:.4rem .5rem;font-size:.72rem;">${formatDateNice(m.fechaIngreso)||'—'}</td>
       <td style="padding:.4rem .5rem;font-size:.72rem;">${plan}</td>
       <td style="padding:.4rem .5rem;font-size:.72rem;">${vence}</td>
       <td style="padding:.4rem .5rem;font-size:.72rem;">${estado}</td>
@@ -2711,6 +2723,7 @@ function abrirReporteMiembros() {
               <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">TELÉFONO</th>
               <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">EMAIL</th>
               <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">NACIMIENTO</th>
+              <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">INGRESO</th>
               <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">PLAN</th>
               <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">VENCIMIENTO</th>
               <th style="padding:.4rem .5rem;color:#fff;text-align:left;font-size:.62rem;">ESTADO</th>
@@ -2754,8 +2767,8 @@ function exportReporteMiembrosPDF() {
 
   // Tabla
   const members = DB.get('members', []).filter(m => m.activo !== false);
-  const headers = ['#','NOMBRE','TELÉFONO','EMAIL','NACIMIENTO','PLAN','VENCIMIENTO','ESTADO','HORARIO'];
-  const colW = [8, 45, 28, 48, 22, 18, 26, 18, 30];
+  const headers = ['#','NOMBRE','TELÉFONO','EMAIL','NACIMIENTO','INGRESO','PLAN','VENCIMIENTO','ESTADO','HORARIO'];
+  const colW = [8, 40, 26, 44, 20, 20, 16, 24, 16, 26];
   const horarios = DB.get('horarios', []);
 
   let y = 30;
@@ -2791,6 +2804,7 @@ function exportReporteMiembrosPDF() {
       String(m.tel||'—'),
       (m.email||'—').substring(0,28),
       formatDateNice(m.fechaNac)||'—',
+      formatDateNice(m.fechaIngreso)||'—',
       pago ? pago.plan.toUpperCase() : '—',
       pago ? formatDateNice(pago.fechaFin)||'—' : '—',
       pago ? 'VIGENTE' : 'VENCIDO',
@@ -3057,9 +3071,30 @@ function openModal(id) {
     populatePagoSelect();
     document.getElementById('pagoMiembroPlan').value = '';
     document.getElementById('pagoMonto').value = '';
-    document.getElementById('pagoFechaInicio').value = fmtDate(new Date());
+    const miembroSelPago = DB.get('members',[]).find(m=>m.id===document.getElementById('pagoMiembro').value);
+    // Si tiene pago anterior, la nueva fechaInicio = fechaFin del último pago
+    const pagosM = DB.get('payments',[]).filter(p=>p.memberId===document.getElementById('pagoMiembro').value);
+    const ultimoPago = pagosM.sort((a,b)=>new Date(limpiarFecha(b.fechaFin))-new Date(limpiarFecha(a.fechaFin)))[0];
+    let fechaInicioSug, hintMsg;
+    if (ultimoPago && ultimoPago.fechaFin) {
+      // Nuevo ciclo arranca donde terminó el anterior
+      fechaInicioSug = limpiarFecha(ultimoPago.fechaFin);
+      hintMsg = 'Continuación desde vencimiento anterior: '+formatDateNice(fechaInicioSug);
+    } else if (miembroSelPago && miembroSelPago.fechaIngreso) {
+      // Primera vez — usar fecha de ingreso
+      fechaInicioSug = limpiarFecha(miembroSelPago.fechaIngreso);
+      hintMsg = 'Primer pago — tomada de fecha de ingreso';
+    } else {
+      fechaInicioSug = fmtDate(new Date());
+      hintMsg = 'Usando fecha de hoy';
+    }
+    document.getElementById('pagoFechaInicio').value = fechaInicioSug;
+    recalcularFechaFin();
+    const hint = document.getElementById('pagoFechaInicioHint');
+    if (hint) hint.textContent = hintMsg;
   }
   if (id==='modalNuevoMiembro' && !editingMemberId) {
+    document.getElementById('mnFechaIngreso').value = fmtDate(new Date());
     document.getElementById('modalMiembroTitle').textContent = 'NUEVO MIEMBRO';
     document.getElementById('mnMembresiaSec').style.display = 'block';
     document.getElementById('mnPlanTipo').value = 'mes';
@@ -3097,6 +3132,8 @@ function saveMiembro() {
         horarioId: document.getElementById('mnHorario').value || null,
         planTipo: document.getElementById('mnPlanTipo').value || members[idx].planTipo || 'mes',
         fechaNac: document.getElementById('mnFechaNac').value || null,
+      fechaIngreso: document.getElementById('mnFechaIngreso').value || fmtDate(new Date()),
+        fechaIngreso: document.getElementById('mnFechaIngreso').value || fmtDate(new Date()),
         genero: document.getElementById('mnGenero').value || null,
         password: (()=>{
           const v = document.getElementById('mnPassword').value.trim();
@@ -3195,6 +3232,7 @@ function editMiembro() {
   const ptEl = document.getElementById('mnPlanTipo'); if(ptEl) ptEl.value = m.planTipo||'mes';
   document.getElementById('mnNotas').value    = m.notas||'';
   document.getElementById('mnFechaNac').value  = limpiarFecha(m.fechaNac)||'';
+  document.getElementById('mnFechaIngreso').value = limpiarFecha(m.fechaIngreso)||'';
   document.getElementById('mnGenero').value    = m.genero||'';
   document.getElementById('mnPassword').value  = '';
   const _pwStatus = document.getElementById('mnPasswordStatus');
@@ -3621,7 +3659,7 @@ function processCheckin() {
   // ── Detectar horario activo ──
   const horaActualP = new Date();
   const horaMinutosP = horaActualP.getHours()*60 + horaActualP.getMinutes();
-  const diaActualP = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][horaActualP.getDay()];
+  const diaActualP = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][horaActualP.getDay()];
   const todosHorariosP = DB.get('horarios',[]).filter(h => h.activo !== false);
   let horarioDetP = null;
   for (const h of todosHorariosP) {
@@ -3778,14 +3816,14 @@ function renderAttendanceList() {
     // Verificar horario activo para kiosco
     const _ahora   = new Date();
     const _minNow  = _ahora.getHours()*60 + _ahora.getMinutes();
-    const _diaNow  = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][_ahora.getDay()];
+    const _diaNow  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_ahora.getDay()];
     const _hors    = DB.get('horarios',[]).filter(h=>h.activo!==false);
     let _hayH = false;
     for (const h of _hors) {
       const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
       const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
       const diasH   = Array.isArray(h.dias)?h.dias:(h.dias||'').split(',');
-      if (diasH.some(d=>d.trim().toUpperCase()===_diaNow) && _minNow>=ih*60+im-30 && _minNow<=fh*60+fm+30) {
+      if (diasH.some(d=>d.trim()===_diaNow) && _minNow>=ih*60+im-15 && _minNow<=fh*60+fm+15) {
         _hayH=true; break;
       }
     }
@@ -3835,14 +3873,14 @@ function renderCheckinMember() {
   // ── Validar horario activo PRIMERO ──
   const _ahoraM  = new Date();
   const _minM    = _ahoraM.getHours()*60 + _ahoraM.getMinutes();
-  const _diaM    = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][_ahoraM.getDay()];
+  const _diaM    = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_ahoraM.getDay()];
   const _horariosM = DB.get('horarios',[]).filter(h=>h.activo!==false);
   let _hayHorarioM = false;
   for (const h of _horariosM) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH   = Array.isArray(h.dias)?h.dias:(h.dias||'').split(',');
-    if (diasH.some(d=>d.trim().toUpperCase()===_diaM) && _minM>=ih*60+im-30 && _minM<=fh*60+fm+30) {
+    if (diasH.some(d=>d.trim()===_diaM) && _minM>=ih*60+im-15 && _minM<=fh*60+fm+15) {
       _hayHorarioM=true; break;
     }
   }
@@ -3970,14 +4008,14 @@ function renderCheckinMember() {
   // Detectar si hay horario activo ahora mismo (igual que en el kiosco)
   const horaAhora = new Date();
   const minAhora  = horaAhora.getHours()*60 + horaAhora.getMinutes();
-  const diaAhora  = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][horaAhora.getDay()];
+  const diaAhora  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][horaAhora.getDay()];
   const todosH    = DB.get('horarios',[]).filter(h => h.activo !== false);
   let hayHorarioActivo = false;
   for (const h of todosH) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-    const diaOk   = diasH.some(d => d.trim().toUpperCase() === diaAhora);
+    const diaOk   = diasH.some(d => d.trim() === diaAhora);
     if (diaOk && minAhora >= ih*60+im-30 && minAhora <= fh*60+fm+30) {
       hayHorarioActivo = true; break;
     }
@@ -4033,14 +4071,14 @@ function doMemberCheckin(forzar) {
   // Validar horario activo
   const _horaAhora = new Date();
   const _minAhora  = _horaAhora.getHours()*60 + _horaAhora.getMinutes();
-  const _diaAhora  = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][_horaAhora.getDay()];
+  const _diaAhora  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_horaAhora.getDay()];
   const _todosH    = DB.get('horarios',[]).filter(h => h.activo !== false);
   let _hayHorario  = false;
   for (const h of _todosH) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-    if (diasH.some(d=>d.trim().toUpperCase()===_diaAhora) && _minAhora>=ih*60+im-30 && _minAhora<=fh*60+fm+30) {
+    if (diasH.some(d=>d.trim()===_diaAhora) && _minAhora>=ih*60+im-15 && _minAhora<=fh*60+fm+15) {
       _hayHorario = true; break;
     }
   }
@@ -4056,7 +4094,7 @@ function doMemberCheckin(forzar) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-    if (diasH.some(d=>d.trim().toUpperCase()===_diaAhora) && _minAhora>=ih*60+im-30 && _minAhora<=fh*60+fm+30) {
+    if (diasH.some(d=>d.trim()===_diaAhora) && _minAhora>=ih*60+im-15 && _minAhora<=fh*60+fm+15) {
       horarioActivoId = h.id; horarioActivoNombre = h.nombre; break;
     }
   }
