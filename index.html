@@ -2517,7 +2517,7 @@ function abrirReporteHorarios() {
 
   const hoy = new Date();
   const fechaHoy = hoy.toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
-  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const dias = ['DOMINGO','LUNES','MARTES','MIÉR','JUEVES','VIERNES','SÁBADO'];
 
   let rows = '';
   horarios.forEach((h, i) => {
@@ -3709,15 +3709,15 @@ function processCheckin() {
   // ── Detectar horario activo ──
   const horaActualP = new Date();
   const horaMinutosP = horaActualP.getHours()*60 + horaActualP.getMinutes();
-  const diaActualP = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][horaActualP.getDay()];
+  const diaActualP = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][horaActualP.getDay()]);
   const todosHorariosP = DB.get('horarios',[]).filter(h => h.activo !== false);
   let horarioDetP = null;
   for (const h of todosHorariosP) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-    const diaOk = diasH.some(d => d.trim().toUpperCase() === diaActualP);
-    if (diaOk && horaMinutosP >= ih*60+im-30 && horaMinutosP <= fh*60+fm+30) {
+    const diaOk = diasH.some(d => normalizarDia(d) === diaActualP);
+    if (diaOk && horaMinutosP >= ih*60+im-15 && horaMinutosP <= fh*60+fm+15) {
       horarioDetP = h; break;
     }
   }
@@ -3866,14 +3866,14 @@ function renderAttendanceList() {
     // Verificar horario activo para kiosco
     const _ahora   = new Date();
     const _minNow  = _ahora.getHours()*60 + _ahora.getMinutes();
-    const _diaNow  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_ahora.getDay()];
+    const _diaNow  = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_ahora.getDay()]);
     const _hors    = DB.get('horarios',[]).filter(h=>h.activo!==false);
     let _hayH = false;
     for (const h of _hors) {
       const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
       const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
       const diasH   = Array.isArray(h.dias)?h.dias:(h.dias||'').split(',');
-      if (diasH.some(d=>d.trim()===_diaNow) && _minNow>=ih*60+im-15 && _minNow<=fh*60+fm+15) {
+      if (diasH.some(d=>normalizarDia(d)===_diaNow) && _minNow>=ih*60+im-15 && _minNow<=fh*60+fm+15) {
         _hayH=true; break;
       }
     }
@@ -3912,6 +3912,14 @@ function renderAttendanceList() {
   }
 }
 
+
+function normalizarDia(d) {
+  return d.trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase()
+    .substring(0,3);
+}
+
 function renderCheckinMember() {
   const m     = currentUser.data;
   const today = fmtDate(new Date());
@@ -3923,14 +3931,14 @@ function renderCheckinMember() {
   // ── Validar horario activo PRIMERO ──
   const _ahoraM  = new Date();
   const _minM    = _ahoraM.getHours()*60 + _ahoraM.getMinutes();
-  const _diaM    = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_ahoraM.getDay()];
+  const _diaM    = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_ahoraM.getDay()]);
   const _horariosM = DB.get('horarios',[]).filter(h=>h.activo!==false);
   let _hayHorarioM = false;
   for (const h of _horariosM) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH   = Array.isArray(h.dias)?h.dias:(h.dias||'').split(',');
-    if (diasH.some(d=>d.trim()===_diaM) && _minM>=ih*60+im-15 && _minM<=fh*60+fm+15) {
+    if (diasH.some(d=>normalizarDia(d)===_diaM) && _minM>=ih*60+im-15 && _minM<=fh*60+fm+15) {
       _hayHorarioM=true; break;
     }
   }
@@ -4058,14 +4066,14 @@ function renderCheckinMember() {
   // Detectar si hay horario activo ahora mismo (igual que en el kiosco)
   const horaAhora = new Date();
   const minAhora  = horaAhora.getHours()*60 + horaAhora.getMinutes();
-  const diaAhora  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][horaAhora.getDay()];
+  const diaAhora  = ['DOMINGO','LUNES','MARTES','MIÉR','JUEVES','VIERNES','SÁBADO'][horaAhora.getDay()];
   const todosH    = DB.get('horarios',[]).filter(h => h.activo !== false);
   let hayHorarioActivo = false;
   for (const h of todosH) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-    const diaOk   = diasH.some(d => d.trim() === diaAhora);
+    const diaOk   = diasH.some(d => d.trim().toUpperCase() === diaAhora.toUpperCase());
     if (diaOk && minAhora >= ih*60+im-30 && minAhora <= fh*60+fm+30) {
       hayHorarioActivo = true; break;
     }
@@ -4121,14 +4129,14 @@ function doMemberCheckin(forzar) {
   // Validar horario activo
   const _horaAhora = new Date();
   const _minAhora  = _horaAhora.getHours()*60 + _horaAhora.getMinutes();
-  const _diaAhora  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_horaAhora.getDay()];
+  const _diaAhora  = ['DOMINGO','LUNES','MARTES','MIÉR','JUEVES','VIERNES','SÁBADO'][_horaAhora.getDay()];
   const _todosH    = DB.get('horarios',[]).filter(h => h.activo !== false);
   let _hayHorario  = false;
   for (const h of _todosH) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-    if (diasH.some(d=>d.trim()===_diaAhora) && _minAhora>=ih*60+im-15 && _minAhora<=fh*60+fm+15) {
+    if (diasH.some(d=>normalizarDia(d)===_diaAhora) && _minAhora>=ih*60+im-15 && _minAhora<=fh*60+fm+15) {
       _hayHorario = true; break;
     }
   }
@@ -4144,7 +4152,7 @@ function doMemberCheckin(forzar) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-    if (diasH.some(d=>d.trim()===_diaAhora) && _minAhora>=ih*60+im-15 && _minAhora<=fh*60+fm+15) {
+    if (diasH.some(d=>d.trim().toUpperCase()===_diaAhora.toUpperCase()) && _minAhora>=ih*60+im-15 && _minAhora<=fh*60+fm+15) {
       horarioActivoId = h.id; horarioActivoNombre = h.nombre; break;
     }
   }
@@ -5341,7 +5349,7 @@ function getHorarioStatus(member) {
   if (!h || !h.activo) return null;
 
   const now     = new Date();
-  const dias    = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const dias    = ['DOMINGO','LUNES','MARTES','MIÉR','JUEVES','VIERNES','SÁBADO'];
   const hoy     = dias[now.getDay()];
   const horaStr = now.toTimeString().slice(0,5); // 'HH:MM'
 
