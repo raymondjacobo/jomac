@@ -2669,7 +2669,7 @@ function abrirReporteMiembros() {
   let rows = '';
   members.forEach((m, i) => {
     const pago = getActivePago(m.id);
-    const plan = pago ? pago.plan.toUpperCase() : '—';
+    const plan = pago ? pago.plan.toUpperCase() : m.planTipo ? m.planTipo.toUpperCase() : '—';
     const vence = pago ? formatDateNice(pago.fechaFin) : '—';
     const estado = pago ? '<span style="color:#16A34A;font-weight:700;">VIGENTE</span>' : '<span style="color:#E3000F;font-weight:700;">VENCIDO</span>';
     const horarios = DB.get('horarios', []);
@@ -2805,7 +2805,7 @@ function exportReporteMiembrosPDF() {
       (m.email||'—').substring(0,28),
       formatDateNice(m.fechaNac)||'—',
       formatDateNice(m.fechaIngreso)||'—',
-      pago ? pago.plan.toUpperCase() : '—',
+      pago ? pago.plan.toUpperCase() : m.planTipo ? m.planTipo.toUpperCase() : '—',
       pago ? formatDateNice(pago.fechaFin)||'—' : '—',
       pago ? 'VIGENTE' : 'VENCIDO',
       (horario ? horario.nombre : '—').substring(0,18)
@@ -3358,15 +3358,16 @@ function cargarEstadoMiembroPago(memberId) {
       <span style="font-size:1.3rem;">🆕</span>
       <div>
         <div style="font-family:var(--font-cond);font-size:.8rem;font-weight:700;letter-spacing:1.5px;color:var(--red);">SIN MEMBRESÍA PREVIA</div>
-        <div style="font-size:.78rem;color:var(--text-mid);margin-top:.15rem;">Se registrará el primer pago — inicio: hoy</div>
+        <div style="font-size:.78rem;color:var(--text-mid);margin-top:.15rem;">Se registrará el primer pago — inicio: fecha de ingreso</div>
       </div>
     </div>`;
-    fechaIni.value = fmtDate(now);
+    const _fIni = m.fechaIngreso ? limpiarFecha(m.fechaIngreso) : fmtDate(now);
+    fechaIni.value = _fIni;
     adelanto.style.display  = 'none';
     formBloque.style.display= 'block';
     guardarBtn.style.display= 'block';
-    const finPreview = calcFin(fmtDate(now), planSel.value||'mes');
-    rangoInfo.textContent = '📅 Período: ' + formatDateNice(fmtDate(now)) + ' → ' + formatDateNice(finPreview);
+    const finPreview = calcFin(_fIni, planSel.value||'mes');
+    rangoInfo.textContent = '📅 Período: ' + formatDateNice(_fIni) + ' → ' + formatDateNice(finPreview);
     autoPrecio();
     return;
   }
@@ -3384,12 +3385,14 @@ function cargarEstadoMiembroPago(memberId) {
         <div style="font-size:.78rem;color:var(--text-mid);margin-top:.15rem;">Venció el ${formatDateNice(ultimoPago.fechaFin)} — hace ${diasVencido} día(s)</div>
       </div>
     </div>`;
-    fechaIni.value = fmtDate(now);
+    // Ciclo continúa desde donde venció el anterior (no desde hoy)
+    const _inicioSig = limpiarFecha(ultimoPago.fechaFin);
+    fechaIni.value = _inicioSig;
     adelanto.style.display  = 'none';
     formBloque.style.display= 'block';
     guardarBtn.style.display= 'block';
-    const finPreview = calcFin(fmtDate(now), planSel.value||'mes');
-    rangoInfo.textContent = '📅 Período: ' + formatDateNice(fmtDate(now)) + ' → ' + formatDateNice(finPreview);
+    const finPreview = calcFin(_inicioSig, planSel.value||'mes');
+    rangoInfo.textContent = '📅 Período: ' + formatDateNice(_inicioSig) + ' → ' + formatDateNice(finPreview);
     autoPrecio();
 
   } else {
@@ -3431,9 +3434,20 @@ function cancelarAdelanto() {
 }
 
 function calcFin(inicioStr, plan) {
-  const dias = { dia:1, semana:7, mes:30, anual:365, cortesia:30 }[plan] || 30;
   const d = new Date(inicioStr+'T00:00:00');
-  d.setDate(d.getDate()+dias);
+  if (plan === 'dia') {
+    d.setDate(d.getDate() + 1);
+  } else if (plan === 'semana') {
+    d.setDate(d.getDate() + 7);
+  } else if (plan === 'mes' || plan === 'cortesia') {
+    // Exactamente 1 mes — mismo día mes siguiente
+    d.setMonth(d.getMonth() + 1);
+  } else if (plan === 'anual') {
+    // Exactamente 1 año — mismo día año siguiente
+    d.setFullYear(d.getFullYear() + 1);
+  } else {
+    d.setMonth(d.getMonth() + 1);
+  }
   return fmtDate(d);
 }
 
