@@ -1046,7 +1046,7 @@
         </div>
         <table>
           <thead>
-            <tr><th>MIEMBRO</th><th>PIN</th><th>TELÉFONO</th><th>PLAN ACTIVO</th><th>VENCIMIENTO</th><th>ESTADO</th><th>HORARIO</th><th></th></tr>
+            <tr><th>MIEMBRO</th><th>PIN</th><th>TELÉFONO</th><th>PLAN ACTIVO</th><th>INGRESO</th><th>VENCIMIENTO</th><th>ESTADO</th><th>HORARIO</th><th></th></tr>
           </thead>
           <tbody id="tablaMiembros"></tbody>
         </table>
@@ -2851,7 +2851,8 @@ function renderMiembros() {
       </div></td>
       <td><code style="background:var(--bg);padding:2px 7px;border-radius:2px;font-size:.85rem;">${m.pin}</code></td>
       <td style="color:var(--text-light);">${m.tel||'—'}</td>
-      <td>${pago ? planBadge(pago.plan) : '<span class="badge badge-gray">—</span>'}</td>
+      <td>${pago ? planBadge(pago.plan) : m.planTipo ? planBadge(m.planTipo) : '<span class="badge badge-gray">—</span>'}</td>
+      <td style="font-family:var(--font-cond);font-size:.82rem;color:var(--text-light);">${m.fechaIngreso ? formatDateNice(limpiarFecha(m.fechaIngreso)) : '—'}</td>
       <td style="font-family:var(--font-cond);font-size:.82rem;color:var(--text-light);">${vence ? formatDateNice(vence) : '—'}</td>
       <td><span class="badge ${estado}">${est}</span></td>
       <td><span style="font-size:.75rem;color:var(--text-light);">${m.horarioId ? horarioNombreById(m.horarioId) : '—'}</span></td>
