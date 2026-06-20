@@ -3997,17 +3997,8 @@ function renderCheckinMember() {
     }
   }
 
-  // Info de horario
+  // Info de horario — ya no se avisa si "no es tu día", porque puede entrar a cualquier horario activo
   let horarioInfo = '';
-  if (hs) {
-    const clsH = !hs.diaOk ? 'alert-warn' : !hs.horaOk ? 'alert-warn' : 'alert-info';
-    const msgH = !hs.diaOk
-      ? `⚠ Hoy <strong>${hs.hoy}</strong> no es día de tu clase <strong>${hs.horario.nombre}</strong>`
-      : !hs.horaOk
-        ? `⚠ Fuera de horario · <strong>${hs.horario.nombre}</strong> (${hs.horario.horaInicio}–${hs.horario.horaFin})`
-        : `🕐 Estás en horario · <strong>${hs.horario.nombre}</strong> ${hs.horario.horaInicio}–${hs.horario.horaFin}`;
-    horarioInfo = `<div class="alert ${clsH}" style="margin-bottom:1.2rem;">${msgH}</div>`;
-  }
 
   // Sin membresía
   if (!pago) {
@@ -4078,21 +4069,23 @@ function renderCheckinMember() {
     return;
   }
 
-  // Detectar si hay horario activo ahora mismo (igual que en el kiosco)
+  // Detectar TODOS los horarios activos ahora mismo (puede haber más de uno en transición)
   const horaAhora = new Date();
   const minAhora  = horaAhora.getHours()*60 + horaAhora.getMinutes();
-  const diaAhora  = ['DOMINGO','LUNES','MARTES','MIÉR','JUEVES','VIERNES','SÁBADO'][horaAhora.getDay()];
+  const diaAhora  = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][horaAhora.getDay()]);
   const todosH    = DB.get('horarios',[]).filter(h => h.activo !== false);
-  let hayHorarioActivo = false;
+  const horariosActivosAhora = [];
   for (const h of todosH) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-    const diaOk   = diasH.some(d => d.trim().toUpperCase() === diaAhora.toUpperCase());
-    if (diaOk && minAhora >= ih*60+im-30 && minAhora <= fh*60+fm+30) {
-      hayHorarioActivo = true; break;
+    const diaOk   = diasH.some(d => normalizarDia(d) === diaAhora);
+    if (diaOk && minAhora >= ih*60+im-15 && minAhora <= fh*60+fm+15) {
+      horariosActivosAhora.push(h);
     }
   }
+  const hayHorarioActivo = horariosActivosAhora.length > 0;
+  window._horariosDisponiblesCheckin = horariosActivosAhora;
 
   // Listo para checar
   card.innerHTML = `
@@ -4101,7 +4094,21 @@ function renderCheckinMember() {
       ${new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'}).toUpperCase()}
     </div>
     ${horarioInfo}
-    ${hayHorarioActivo ? `
+    ${hayHorarioActivo ? (horariosActivosAhora.length > 1 ? `
+    <div style="margin:.5rem 0 1rem;">
+      <div style="font-size:.75rem;color:var(--text-light);font-family:var(--font-cond);letter-spacing:1px;margin-bottom:.5rem;">SELECCIONA TU HORARIO</div>
+      ${horariosActivosAhora.map(h => `
+        <button onclick="doMemberCheckin(false,'${h.id}')" style="
+          width:100%; padding:.9rem; margin-bottom:.5rem;
+          background:#fff; border:2px solid var(--red); border-radius:8px;
+          font-family:var(--font-cond); font-size:1rem; font-weight:700; letter-spacing:1px;
+          color:var(--red); cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center;">
+          <span>🕐 ${h.nombre}</span>
+          <span style="font-size:.78rem;font-weight:400;">${limpiarHora(h.horaInicio)}–${limpiarHora(h.horaFin)}</span>
+        </button>
+      `).join('')}
+    </div>
+    ` : `
     <button onclick="doMemberCheckin()" style="
       width:100%; padding:1.4rem; margin:.5rem 0 1rem;
       background:var(--red); border:none; border-radius:2px;
@@ -4110,7 +4117,7 @@ function renderCheckinMember() {
       box-shadow:0 6px 30px rgba(227,0,15,0.4);
       transition:all .2s;">
       ✅ REGISTRAR ENTRADA
-    </button>` : `
+    </button>`) : `
     <div style="background:#FEF2F2;border:1.5px solid #E3000F;border-radius:10px;padding:1rem;margin:.5rem 0 1rem;text-align:center;">
       <div style="font-size:1.8rem;margin-bottom:.3rem;">🚫</div>
       <div style="font-family:var(--font-display);font-size:1.1rem;letter-spacing:2px;color:#E3000F;">SIN HORARIO ACTIVO</div>
@@ -4135,7 +4142,7 @@ function renderCheckinMember() {
   }
 }
 
-function doMemberCheckin(forzar) {
+function doMemberCheckin(forzar, horarioIdElegido) {
   const m     = currentUser.data;
   const today = fmtDate(new Date());
   const pago  = getActivePago(m.id);
@@ -4144,7 +4151,7 @@ function doMemberCheckin(forzar) {
   // Validar horario activo
   const _horaAhora = new Date();
   const _minAhora  = _horaAhora.getHours()*60 + _horaAhora.getMinutes();
-  const _diaAhora  = ['DOMINGO','LUNES','MARTES','MIÉR','JUEVES','VIERNES','SÁBADO'][_horaAhora.getDay()];
+  const _diaAhora  = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_horaAhora.getDay()]);
   const _todosH    = DB.get('horarios',[]).filter(h => h.activo !== false);
   let _hayHorario  = false;
   for (const h of _todosH) {
@@ -4155,20 +4162,39 @@ function doMemberCheckin(forzar) {
       _hayHorario = true; break;
     }
   }
+  // Debug log persistente
+  try {
+    const _debugLog = JSON.parse(localStorage.getItem('_checkinDebugLog')||'[]');
+    _debugLog.push({
+      ts: new Date().toString(),
+      dia: _diaAhora, min: _minAhora,
+      horarios: _todosH.map(h=>({n:h.nombre,dias:h.dias,ini:limpiarHora(h.horaInicio),fin:limpiarHora(h.horaFin)})),
+      hayHorario: _hayHorario
+    });
+    if (_debugLog.length > 10) _debugLog.shift();
+    localStorage.setItem('_checkinDebugLog', JSON.stringify(_debugLog));
+  } catch(e) {}
+
   if (!_hayHorario) { toast('No hay horario activo en este momento','error'); renderCheckinMember(); return; }
 
   const att  = DB.get('attendance', []);
   const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
   const hs   = getHorarioStatus(m);
 
-  // Usar el horario ACTIVO en este momento, no el asignado al perfil
+  // Usar el horario elegido por el usuario, o el ACTIVO detectado automáticamente
   let horarioActivoId = null, horarioActivoNombre = null;
-  for (const h of _todosH) {
-    const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
-    const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
-    const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-    if (diasH.some(d=>d.trim().toUpperCase()===_diaAhora.toUpperCase()) && _minAhora>=ih*60+im-15 && _minAhora<=fh*60+fm+15) {
-      horarioActivoId = h.id; horarioActivoNombre = h.nombre; break;
+  if (horarioIdElegido) {
+    const hEleg = _todosH.find(h => h.id === horarioIdElegido);
+    if (hEleg) { horarioActivoId = hEleg.id; horarioActivoNombre = hEleg.nombre; }
+  }
+  if (!horarioActivoId) {
+    for (const h of _todosH) {
+      const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+      const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+      const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
+      if (diasH.some(d=>normalizarDia(d)===_diaAhora) && _minAhora>=ih*60+im-15 && _minAhora<=fh*60+fm+15) {
+        horarioActivoId = h.id; horarioActivoNombre = h.nombre; break;
+      }
     }
   }
   const reg = {
