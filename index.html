@@ -3727,15 +3727,49 @@ function processCheckin() {
   const diaActualP = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][horaActualP.getDay()]);
   const todosHorariosP = DB.get('horarios',[]).filter(h => h.activo !== false);
   let horarioDetP = null;
+  const horariosDetP = []; // todos los horarios activos en este momento
   for (const h of todosHorariosP) {
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
     const diaOk = diasH.some(d => normalizarDia(d) === diaActualP);
     if (diaOk && horaMinutosP >= ih*60+im-15 && horaMinutosP <= fh*60+fm+15) {
-      horarioDetP = h; break;
+      horariosDetP.push(h);
     }
   }
+  horarioDetP = horariosDetP[0] || null;
+  // Validar duplicado ANTES de mostrar confirmación
+  const _today = fmtDate(new Date());
+  const _att = DB.get('attendance', []);
+  const _yaEnHorario = horariosDetP.length > 0 && _att.find(a =>
+    String(a.memberId) === String(m.id) &&
+    limpiarFecha(a.fecha) === _today &&
+    horariosDetP.some(h =>
+      String(a.horarioId) === String(h.id) ||
+      (a.horarioNombre||'').trim() === (h.nombre||'').trim()
+    )
+  );
+  if (_yaEnHorario) {
+    result.innerHTML = `<div class="alert alert-info">ℹ️ ${m.nombre} ya registró entrada en <strong>${_yaEnHorario.horarioNombre||''}</strong> hoy — ${limpiarHora(_yaEnHorario.hora)}</div>`;
+    setTimeout(checkinClear, 3000);
+    return;
+  }
+
+  // Debug log persistente para kiosco PIN
+  try {
+    const _debugLog = JSON.parse(localStorage.getItem('_checkinDebugLog')||'[]');
+    _debugLog.push({
+      origen: 'KIOSCO_PIN',
+      ts: new Date().toString(),
+      tsISO: new Date().toISOString(),
+      dia: diaActualP, min: horaMinutosP,
+      horarios: todosHorariosP.map(h=>({n:h.nombre,dias:h.dias,ini:limpiarHora(h.horaInicio),fin:limpiarHora(h.horaFin)})),
+      horarioDetectado: horarioDetP ? horarioDetP.nombre : null
+    });
+    if (_debugLog.length > 10) _debugLog.shift();
+    localStorage.setItem('_checkinDebugLog', JSON.stringify(_debugLog));
+  } catch(e) {}
+
   let alertaHorario = '';
   if (!horarioDetP) {
     alertaHorario = `<div style="background:#FEF2F2;border:1.5px solid #E3000F;border-radius:8px;padding:.45rem .7rem;margin:.4rem 0;font-size:.72rem;color:#E3000F;font-weight:700;">🚫 No hay horario activo en este momento — Check-in bloqueado</div>`;
@@ -3765,6 +3799,12 @@ function processCheckin() {
   window._checkinMiembro = m;
   window._checkinPago = pago;
   window._horarioDetP = horarioDetP;
+}
+
+function confirmarCheckinConHorario(horarioId) {
+  const h = DB.get('horarios',[]).find(x => x.id === horarioId);
+  window._horarioDetP = h || window._horarioDetP;
+  confirmarCheckin();
 }
 
 function confirmarCheckin() {
@@ -3803,10 +3843,17 @@ function confirmarCheckin() {
   const yaEnEsteHorario = horarioDetectado && att.find(a =>
     String(a.memberId) === String(m.id) &&
     limpiarFecha(a.fecha) === today &&
-    a.horarioId === horarioDetectado.id
+    String(a.horarioId) === String(horarioDetectado.id)
   );
-  if (yaEnEsteHorario) {
-    result.innerHTML = `<div class="alert alert-info">ℹ️ ${m.nombre} ya registró entrada en <strong>${horarioDetectado.nombre}</strong> hoy a las ${limpiarHora(yaEnEsteHorario.hora)}</div>`;
+  // También bloquear si ya checó hoy en cualquier horario y es el mismo nombre
+  const yaEnEsteNombre = horarioDetectado && att.find(a =>
+    String(a.memberId) === String(m.id) &&
+    limpiarFecha(a.fecha) === today &&
+    (a.horarioNombre||'').trim() === (horarioDetectado.nombre||'').trim()
+  );
+  if (yaEnEsteHorario || yaEnEsteNombre) {
+    const prev = yaEnEsteHorario || yaEnEsteNombre;
+    result.innerHTML = `<div class="alert alert-info">ℹ️ ${m.nombre} ya registró entrada en <strong>${horarioDetectado.nombre}</strong> hoy a las ${limpiarHora(prev.hora)}</div>`;
     setTimeout(checkinClear, 3000);
     return;
   }
@@ -3978,23 +4025,37 @@ function renderCheckinMember() {
   let yaMsg         = '';
   let otroHorarioNombre = '';
 
-  if (hs) {
-    // Tiene horario asignado
-    const entradaMismoHorario = attHoy.find(a => a.horarioId === m.horarioId);
-    const entradaOtroHorario  = attHoy.find(a => a.horarioId !== m.horarioId);
-    if (entradaMismoHorario) {
-      yaCheco = true;
-      yaMsg   = `Ya registraste entrada en <strong>${hs.horario.nombre}</strong> hoy.`;
-    } else if (entradaOtroHorario) {
-      checoOtroHorario  = true;
-      otroHorarioNombre = entradaOtroHorario.horarioNombre || 'otro horario';
-    }
-  } else {
-    // Sin horario: una entrada por día
-    if (attHoy.length > 0) {
-      yaCheco = true;
-      yaMsg   = 'Ya registraste tu entrada de hoy.';
-    }
+  // Detectar horarios activos AHORA para comparar
+  const _ahoraYC  = new Date();
+  const _minYC    = _ahoraYC.getHours()*60 + _ahoraYC.getMinutes();
+  const _diaYC    = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_ahoraYC.getDay()]);
+  const _activosYC = DB.get('horarios',[]).filter(h => {
+    if (h.activo === false) return false;
+    const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+    const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+    const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
+    return diasH.some(d=>normalizarDia(d)===_diaYC) && _minYC>=ih*60+im-15 && _minYC<=fh*60+fm+15;
+  });
+
+  // ¿Ya checó en alguno de los horarios activos ahora?
+  const _entradaActivoHoy = attHoy.find(a =>
+    _activosYC.some(h => String(a.horarioId)===String(h.id) || (a.horarioNombre||'').trim()===(h.nombre||'').trim())
+  );
+  // ¿Checó hoy en un horario diferente a los activos ahora?
+  const _entradaOtroHoy = attHoy.find(a =>
+    !_activosYC.some(h => String(a.horarioId)===String(h.id) || (a.horarioNombre||'').trim()===(h.nombre||'').trim())
+  );
+
+  alert('activosYC:'+JSON.stringify(_activosYC.map(h=>({n:h.nombre,id:h.id})))+' | attHoy:'+JSON.stringify(attHoy.map(a=>({hId:a.horarioId,hN:a.horarioNombre})))+' | entradaActivo:'+!!_entradaActivoHoy+' | entradaOtro:'+!!_entradaOtroHoy);
+  if (_entradaActivoHoy) {
+    yaCheco = true;
+    yaMsg = `Ya registraste entrada en <strong>${_entradaActivoHoy.horarioNombre||'este horario'}</strong> hoy a las ${limpiarHora(_entradaActivoHoy.hora)}.`;
+  } else if (_entradaOtroHoy && _activosYC.length > 0) {
+    checoOtroHorario  = true;
+    otroHorarioNombre = _entradaOtroHoy.horarioNombre || 'otro horario';
+  } else if (attHoy.length > 0 && _activosYC.length === 0) {
+    yaCheco = true;
+    yaMsg   = 'Ya registraste tu entrada de hoy.';
   }
 
   // Info de horario — ya no se avisa si "no es tu día", porque puede entrar a cualquier horario activo
@@ -4012,17 +4073,51 @@ function renderCheckinMember() {
   // Checó en un horario DIFERENTE hoy → advertencia + confirmar
   if (checoOtroHorario) {
     const entradaPrevia = attHoy[attHoy.length-1];
+    // Detectar TODOS los horarios activos ahora (igual que en el flujo normal)
+    const _hAhoraOH  = new Date();
+    const _minOH     = _hAhoraOH.getHours()*60 + _hAhoraOH.getMinutes();
+    const _diaOH     = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_hAhoraOH.getDay()]);
+    const _todosHOH  = DB.get('horarios',[]).filter(h => h.activo !== false);
+    const _activosOH = [];
+    for (const h of _todosHOH) {
+      const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+      const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+      const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
+      if (diasH.some(d=>normalizarDia(d)===_diaOH) && _minOH>=ih*60+im-15 && _minOH<=fh*60+fm+15) {
+        _activosOH.push(h);
+      }
+    }
+
     card.innerHTML = `
       <div class="checkin-title" style="font-size:1.6rem;">¡HOLA, ${m.nombre.split(' ')[0].toUpperCase()}!</div>
       <div style="margin-bottom:1rem;">${horarioInfo}</div>
       <div class="alert alert-warn" style="margin-bottom:1.2rem;font-size:.92rem;">
         ⚠ Ya registraste una entrada hoy a las <strong>${entradaPrevia?.hora||''}</strong>
         en <strong>${otroHorarioNombre}</strong>.<br><br>
-        ¿Deseas registrar una <strong>nueva entrada</strong> para
-        ${hs ? `<strong>${hs.horario.nombre}</strong>` : 'este horario'}?
+        ¿Deseas registrar una <strong>nueva entrada</strong>?
       </div>
+      ${_activosOH.length > 1 ? `
+        <div style="font-size:.75rem;color:var(--text-light);font-family:var(--font-cond);letter-spacing:1px;margin-bottom:.5rem;">SELECCIONA TU HORARIO</div>
+        ${_activosOH.map(h => `
+          <button onclick="doMemberCheckin(true,'${h.id}')" style="
+            width:100%; padding:.9rem; margin-bottom:.5rem;
+            background:#fff; border:2px solid var(--red); border-radius:8px;
+            font-family:var(--font-cond); font-size:1rem; font-weight:700; letter-spacing:1px;
+            color:var(--red); cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center;">
+            <span>🕐 ${h.nombre}</span>
+            <span style="font-size:.78rem;font-weight:400;">${limpiarHora(h.horaInicio)}–${limpiarHora(h.horaFin)}</span>
+          </button>
+        `).join('')}
+        <button onclick="renderCheckinMember()" style="
+          width:100%; padding:.8rem; margin-top:.3rem;
+          background:var(--gray-dark); border:1px solid var(--gray-mid); border-radius:8px;
+          font-family:var(--font-cond); font-size:.9rem; font-weight:700; letter-spacing:1px;
+          color:var(--text-light); cursor:pointer;">
+          ✗ CANCELAR
+        </button>
+      ` : `
       <div style="display:flex;gap:.8rem;">
-        <button onclick="doMemberCheckin(true)" style="
+        <button onclick="doMemberCheckin(true${_activosOH[0]?",'"+_activosOH[0].id+"'":''})" style="
           flex:1; padding:1rem;
           background:var(--red); border:none; border-radius:2px;
           font-family:var(--font-display); font-size:1.3rem; letter-spacing:3px;
@@ -4037,6 +4132,7 @@ function renderCheckinMember() {
           NO, CANCELAR
         </button>
       </div>
+      `}
       <div style="font-size:.72rem;color:var(--text-light);font-family:var(--font-cond);margin-top:.8rem;letter-spacing:1px;">
         Se registrará como asistencia adicional del día.
       </div>`;
