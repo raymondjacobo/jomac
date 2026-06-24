@@ -4046,7 +4046,6 @@ function renderCheckinMember() {
     !_activosYC.some(h => String(a.horarioId)===String(h.id) || (a.horarioNombre||'').trim()===(h.nombre||'').trim())
   );
 
-  alert('activosYC:'+JSON.stringify(_activosYC.map(h=>({n:h.nombre,id:h.id})))+' | attHoy:'+JSON.stringify(attHoy.map(a=>({hId:a.horarioId,hN:a.horarioNombre})))+' | entradaActivo:'+!!_entradaActivoHoy+' | entradaOtro:'+!!_entradaOtroHoy);
   if (_entradaActivoHoy) {
     yaCheco = true;
     yaMsg = `Ya registraste entrada en <strong>${_entradaActivoHoy.horarioNombre||'este horario'}</strong> hoy a las ${limpiarHora(_entradaActivoHoy.hora)}.`;
@@ -4374,12 +4373,22 @@ function loadMemberProfile() {
   if (!pago) {
     checkinBtn = `<div class="alert alert-warn" style="margin-bottom:1.2rem;">⚠ Sin membresía activa. Acude a recepción.</div>`;
   } else {
-    // ¿Ya checó en este horario / hoy?
-    const yaEnEsteHorario = hs
-      ? attHoy.some(a => a.horarioId === m.horarioId)
-      : attHoy.length > 0;
-    const entradaOtroHorario = hs
-      ? attHoy.find(a => a.horarioId !== m.horarioId)
+    // ¿Ya checó en algún horario activo ahora?
+    const _ahoraP2  = new Date();
+    const _minP2    = _ahoraP2.getHours()*60 + _ahoraP2.getMinutes();
+    const _diaP2    = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_ahoraP2.getDay()]);
+    const _activosP2 = DB.get('horarios',[]).filter(h => {
+      if (h.activo === false) return false;
+      const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+      const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+      const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
+      return diasH.some(d=>normalizarDia(d)===_diaP2) && _minP2>=ih*60+im-15 && _minP2<=fh*60+fm+15;
+    });
+    const yaEnEsteHorario = attHoy.some(a =>
+      _activosP2.some(h => String(a.horarioId)===String(h.id) || (a.horarioNombre||'').trim()===(h.nombre||'').trim())
+    ) || (_activosP2.length === 0 && attHoy.length > 0);
+    const entradaOtroHorario = !yaEnEsteHorario && attHoy.length > 0
+      ? attHoy.find(a => !_activosP2.some(h => String(a.horarioId)===String(h.id) || (a.horarioNombre||'').trim()===(h.nombre||'').trim()))
       : null;
 
     if (yaEnEsteHorario) {
@@ -4404,7 +4413,7 @@ function loadMemberProfile() {
           <div class="alert alert-warn" style="margin-bottom:.7rem;font-size:.85rem;">
             ⚠ Ya checaste a las <strong>${entradaOtroHorario.hora}</strong>
             en <strong>${entradaOtroHorario.horarioNombre||'otro horario'}</strong>.
-            ¿Registrar entrada adicional${hs?' para <strong>'+hs.horario.nombre+'</strong>':''}?
+            ¿Registrar entrada adicional${_activosP2.length>0?' para <strong>'+_activosP2[0].nombre+'</strong>':''}?
           </div>
           <div style="display:flex;gap:.6rem;">
             <button onclick="doCheckinFromProfile(true)" style="
