@@ -3900,17 +3900,7 @@ function patchAttendanceHorarios() {
   const members = DB.get('members',[]);
   const att     = DB.get('attendance',[]);
   let changed   = false;
-  att.forEach(a => {
-    if (limpiarFecha(a.fecha) !== today) return;
-    if (a.horarioId) return; // ya tiene horario
-    const m = members.find(x => x.id === a.memberId);
-    if (!m || !m.horarioId) return;
-    const horarios = DB.get('horarios',[]);
-    const h = horarios.find(x => x.id === m.horarioId);
-    a.horarioId    = m.horarioId;
-    a.horarioNombre = h ? h.nombre : null;
-    changed = true;
-  });
+  // No rellenar horarioId desde perfil — se guarda el horario real del check-in
   if (changed) DB.set('attendance', att);
 }
 
@@ -4296,8 +4286,8 @@ function doMemberCheckin(forzar, horarioIdElegido) {
     id: 'A'+Date.now(),
     memberId: m.id, memberName: m.nombre,
     plan: pago.plan, fecha: today, hora,
-    horarioId: horarioActivoId,
-    horarioNombre: horarioActivoNombre,
+    horarioId: horarioActivoId || null,
+    horarioNombre: horarioActivoNombre || null,
     forzado: forzar ? true : false
   };
   att.push(reg);
@@ -4327,6 +4317,7 @@ function renderAsistencia() {
   tbody.innerHTML = att.map(a=>{
     const h = horarios.find(x=>x.id===(a.horarioId||''));
     const claseNombre = h ? h.nombre : (a.horarioNombre || null);
+    const isAdmin = currentUser && (currentUser.type==='admin' || currentUser.type==='instructor');
     return `<tr>
       <td style="font-family:var(--font-cond);font-size:.82rem;color:var(--text-light);">${formatDateNice(a.fecha)}</td>
       <td><div style="display:flex;align-items:center;gap:.6rem;"><div class="member-avatar" style="width:28px;height:28px;font-size:.8rem;">${a.memberName[0]}</div>${a.memberName}</div></td>
@@ -4335,8 +4326,20 @@ function renderAsistencia() {
         ${claseNombre ? `<div style="font-weight:600;font-size:.87rem;">${claseNombre}</div>` : ''}
         <div style="font-family:var(--font-cond);font-size:.78rem;color:var(--text-light);margin-top:1px;">🕐 ${limpiarHora(a.hora)}</div>
       </td>
+      ${isAdmin ? `<td><button onclick="eliminarAsistencia('${a.id}')" style="background:transparent;border:1px solid #FECACA;border-radius:4px;color:var(--red);cursor:pointer;padding:.25rem .4rem;font-size:.75rem;" title="Eliminar registro">🗑</button></td>` : '<td></td>'}
     </tr>`;
   }).join('');
+}
+
+
+function eliminarAsistencia(id) {
+  if (!confirm('¿Eliminar este registro de asistencia?')) return;
+  let att = DB.get('attendance', []);
+  att = att.filter(a => a.id !== id);
+  DB.set('attendance', att);
+  syncGoogleSheets(true);
+  renderAsistencia();
+  toast('Registro eliminado', 'success');
 }
 
 function exportCSV() {
@@ -4492,20 +4495,39 @@ function loadMemberProfile() {
     </div>`;
 }
 
-function doCheckinFromProfile(forzar) {
+function doCheckinFromProfile(forzar, horarioIdElegido) {
   const m     = currentUser.data;
   const today = fmtDate(new Date());
   const pago  = getActivePago(m.id);
   if (!pago) { toast('Sin membresía activa','error'); return; }
   const att  = DB.get('attendance', []);
   const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-  const hs   = getHorarioStatus(m);
+  // Detectar horario activo ahora
+  const _aP  = new Date();
+  const _mP  = _aP.getHours()*60 + _aP.getMinutes();
+  const _dP  = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_aP.getDay()]);
+  const _hAll= DB.get('horarios',[]).filter(h=>h.activo!==false);
+  let _hActId=null, _hActNom=null;
+  if (horarioIdElegido) {
+    const _hEl = _hAll.find(h=>h.id===horarioIdElegido);
+    if (_hEl) { _hActId=_hEl.id; _hActNom=_hEl.nombre; }
+  }
+  if (!_hActId) {
+    for (const h of _hAll) {
+      const [ih,im]=limpiarHora(h.horaInicio).split(':').map(Number);
+      const [fh,fm]=limpiarHora(h.horaFin).split(':').map(Number);
+      const diasH=Array.isArray(h.dias)?h.dias:(h.dias||'').split(',');
+      if (diasH.some(d=>normalizarDia(d)===_dP) && _mP>=ih*60+im-15 && _mP<=fh*60+fm+15) {
+        _hActId=h.id; _hActNom=h.nombre; break;
+      }
+    }
+  }
   const reg  = {
     id: 'A'+Date.now(),
     memberId: m.id, memberName: m.nombre,
     plan: pago.plan, fecha: today, hora,
-    horarioId: m.horarioId||null,
-    horarioNombre: hs ? hs.horario.nombre : null,
+    horarioId: _hActId||null,
+    horarioNombre: _hActNom||null,
     forzado: forzar||false
   };
   att.push(reg);
