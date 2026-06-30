@@ -3030,13 +3030,27 @@ function mostrarOpcionesPDF(pdfUrl, exp) {
           style="background:#25D366;color:#fff;border:none;border-radius:8px;padding:.8rem;font-family:'Barlow Condensed',sans-serif;font-size:1rem;letter-spacing:2px;font-weight:700;cursor:pointer;box-shadow:0 3px 12px rgba(37,211,102,.3);">
           <img src='https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg' style='width:16px;vertical-align:middle;margin-right:6px;'/> ENVIAR POR WHATSAPP
         </button>
-        <button onclick="this.closest('div[style]').parentElement.remove()"
+        <button onclick="window._cerrarVencModal && window._cerrarVencModal()"
           style="background:transparent;border:none;color:#aaa;font-family:'Barlow Condensed',sans-serif;font-size:.85rem;letter-spacing:1px;cursor:pointer;padding:.4rem;">
           CERRAR
         </button>
       </div>
     </div>`;
+  // Cerrar al tocar el overlay
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.remove();
+      document.body.style.overflow = '';
+    }
+  });
+  document.body.style.overflow = 'hidden';
   document.body.appendChild(overlay);
+
+  // Función global para cerrar el modal
+  window._cerrarVencModal = () => {
+    overlay.remove();
+    document.body.style.overflow = '';
+  };
 
   // Guardar URL en closure para WhatsApp
   window._vencPdfUrl = pdfUrl;
@@ -3585,7 +3599,7 @@ function renderPagos() {
           color:var(--text-light);cursor:pointer;padding:.3rem .6rem;font-size:.75rem;
           font-family:var(--font-cond);letter-spacing:1px;white-space:nowrap;"
           title="Ver comprobante">🧾 RECIBO</button>
-        ${currentUser && currentUser.type==='admin' ? `
+        ${currentUser && (currentUser.type==='admin' || currentUser.type==='instructor') ? `
           <button onclick="editarPago('${p.id}')" style="
             background:transparent;border:1px solid #BFDBFE;border-radius:4px;
             color:#2563EB;cursor:pointer;padding:.3rem .5rem;font-size:.75rem;"
