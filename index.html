@@ -1042,7 +1042,7 @@
           <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
             <div class="search-box">
               <span>🔍</span>
-              <input type="text" id="searchMiembros" placeholder="Buscar..." oninput="renderMiembros()"/>
+              <input type="text" id="searchMiembros" placeholder="Buscar..." oninput="renderMiembros()" onkeyup="renderMiembros()" onchange="renderMiembros()"/>
             </div>
             <button class="btn-secondary" onclick="abrirReporteMiembros()" style="font-size:.78rem;padding:.4rem .9rem;border-color:var(--red);color:var(--red);white-space:nowrap;">📋 REPORTE</button>
           </div>
@@ -2835,7 +2835,7 @@ function renderMiembros() {
   const q       = (document.getElementById('searchMiembros')?.value||'').toLowerCase();
   const members = DB.get('members', []);
   const payments= DB.get('payments', []);
-  const filtered= members.filter(m => m.nombre.toLowerCase().includes(q) || m.pin.includes(q) || (m.tel||'').includes(q));
+  const filtered= !q ? members : members.filter(m => String(m.nombre||'').toLowerCase().includes(q) || String(m.pin||'').includes(q) || String(m.tel||'').includes(q) || String(m.email||'').toLowerCase().includes(q));
 
   const tbody = document.getElementById('tablaMiembros');
   if (!filtered.length) { tbody.innerHTML=`<tr><td colspan="7"><div class="no-data"><div class="no-data-icon">👥</div>Sin resultados</div></td></tr>`; return; }
