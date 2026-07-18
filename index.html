@@ -5107,14 +5107,43 @@ function renderReportePagos() {
   if (!tbody) return;
   if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="no-data">Sin pagos en este período</div></td></tr>`; return; }
   const icons = { efectivo:'💵', transferencia:'🏦', tarjeta:'💳' };
-  tbody.innerHTML = filtered.sort((a,b)=>limpiarFecha(a.fechaPago).localeCompare(limpiarFecha(b.fechaPago))).map(p=>`
+  const sorted = filtered.sort((a,b)=>limpiarFecha(a.fechaPago).localeCompare(limpiarFecha(b.fechaPago)));
+  const totEfectivo      = sorted.filter(p=>p.metodo==='efectivo').reduce((s,p)=>s+Number(p.monto),0);
+  const totTransferencia = sorted.filter(p=>p.metodo==='transferencia').reduce((s,p)=>s+Number(p.monto),0);
+  const totTarjeta       = sorted.filter(p=>p.metodo==='tarjeta').reduce((s,p)=>s+Number(p.monto),0);
+  const totGeneral       = totEfectivo + totTransferencia + totTarjeta;
+
+  tbody.innerHTML = sorted.map(p=>`
     <tr>
       <td style="font-size:.82rem;color:var(--text-light);">${formatDateNice(p.fechaPago)}</td>
       <td>${p.memberName}</td>
       <td>${planBadge(p.plan)}</td>
       <td style="font-family:var(--font-display);font-size:1.1rem;">$${Number(p.monto).toLocaleString()}</td>
       <td>${icons[p.metodo]||'💵'} ${p.metodo}</td>
-    </tr>`).join('');
+    </tr>`).join('') + `
+    <tr style="border-top:2px solid var(--border);background:#f9f9f9;">
+      <td colspan="5" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO POR TIPO</td>
+    </tr>
+    ${totEfectivo>0?`<tr style="background:#f9f9f9;">
+      <td colspan="3" style="font-family:var(--font-cond);font-size:.85rem;">💵 Efectivo</td>
+      <td style="font-family:var(--font-display);font-size:1rem;">$${totEfectivo.toLocaleString('es-MX')}</td>
+      <td></td>
+    </tr>`:''}
+    ${totTransferencia>0?`<tr style="background:#f9f9f9;">
+      <td colspan="3" style="font-family:var(--font-cond);font-size:.85rem;">🏦 Transferencia</td>
+      <td style="font-family:var(--font-display);font-size:1rem;">$${totTransferencia.toLocaleString('es-MX')}</td>
+      <td></td>
+    </tr>`:''}
+    ${totTarjeta>0?`<tr style="background:#f9f9f9;">
+      <td colspan="3" style="font-family:var(--font-cond);font-size:.85rem;">💳 Tarjeta</td>
+      <td style="font-family:var(--font-display);font-size:1rem;">$${totTarjeta.toLocaleString('es-MX')}</td>
+      <td></td>
+    </tr>`:''}
+    <tr style="background:#fff3f3;border-top:2px solid var(--red);">
+      <td colspan="3" style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--red);">TOTAL</td>
+      <td style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--red);">$${totGeneral.toLocaleString('es-MX')}</td>
+      <td></td>
+    </tr>`;
 }
 
 function exportReportePagosCSV() {
@@ -5218,6 +5247,94 @@ function initReporteFechas() {
 // ════════════════════════════════════════════
 // PDF REPORTES
 // ════════════════════════════════════════════
+function buildReportePagosPDF(titulo, subtitulo, headers, rows, frase, totales) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const rojo  = [227,0,15];
+  const gris  = [120,120,120];
+  const negro = [30,30,30];
+  const bg    = [244,245,247];
+  const fechaHoy = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+
+  // Header rojo con logo
+  doc.setFillColor(...rojo);
+  doc.rect(0, 0, 210, 38, 'F');
+  const logoEl = document.querySelector('img[alt="JOMAC"]');
+  if (logoEl && logoEl.src.startsWith('data:')) {
+    try { doc.addImage(logoEl.src, 'PNG', 10, 4, 40, 30); } catch(e) {}
+  }
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14); doc.setTextColor(255,255,255);
+  doc.text('JOMAC ENTRENAMIENTO FUNCIONAL', 56, 14);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text(titulo.toUpperCase(), 56, 21);
+  doc.text(subtitulo, 56, 27);
+  doc.text('Fecha: ' + fechaHoy, 56, 33);
+
+  // Tabla
+  let y = 50;
+  const colW = Math.floor(186 / headers.length);
+  const cols = headers.map((_,i) => 12 + i*colW);
+
+  doc.setFillColor(...bg);
+  doc.rect(12, y-5, 186, 8, 'F');
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(...gris);
+  headers.forEach((h,i) => doc.text(h, cols[i], y));
+  y += 4;
+  doc.setDrawColor(...bg); doc.line(12, y, 198, y); y += 4;
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  rows.forEach((row, idx) => {
+    if (idx%2===0) { doc.setFillColor(252,252,252); doc.rect(12,y-4,186,7,'F'); }
+    doc.setTextColor(...negro);
+    row.forEach((cell,i) => {
+      const txt = String(cell||'').substring(0,28);
+      doc.text(txt, cols[i], y);
+    });
+    y += 8;
+    if (y > 200) {
+      agregarPiePDF(doc, frase, fechaHoy, rows.length);
+      doc.addPage(); y = 20;
+    }
+  });
+
+  // Bloque acumulado por tipo
+  y += 4;
+  doc.setDrawColor(...rojo); doc.setLineWidth(0.4);
+  doc.line(12, y, 198, y); y += 6;
+  doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(...gris);
+  doc.text('ACUMULADO POR TIPO DE PAGO', 12, y); y += 6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  const tipos = [
+    { label: 'Efectivo',       val: totales.efectivo },
+    { label: 'Transferencia',  val: totales.transferencia },
+    { label: 'Tarjeta',        val: totales.tarjeta },
+  ].filter(t => t.val > 0);
+  tipos.forEach(t => {
+    doc.setTextColor(...negro);
+    doc.text(t.label, 20, y);
+    doc.text('$' + t.val.toLocaleString('es-MX'), 120, y);
+    y += 7;
+  });
+  // Línea total
+  doc.setDrawColor(...rojo); doc.line(12, y, 198, y); y += 5;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.setTextColor(...rojo);
+  doc.text('TOTAL', 20, y);
+  doc.text('$' + totales.total.toLocaleString('es-MX'), 120, y);
+
+  // Pie motivacional
+  agregarPiePDF(doc, frase, fechaHoy, rows.length);
+
+  const pdfBlob = doc.output('blob');
+  const pdfUrl  = URL.createObjectURL(pdfBlob);
+  const a = document.createElement('a');
+  a.href = pdfUrl;
+  a.download = titulo.replace(/\s+/g,'_') + '.pdf';
+  a.click();
+  return { blob: pdfBlob, url: pdfUrl, titulo };
+}
+
 function buildReportePDF(titulo, subtitulo, headers, rows, frase) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:'mm', format:'a4' });
@@ -5326,11 +5443,20 @@ function exportReportePagosPDF(compartir=false) {
     if (tds.length >= 5) rows.push([tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(), tds[3].textContent.trim(), tds[4].textContent.trim().replace(/[^\x00-\x7F\xC0-\xFF]/g, '').trim()]);
   });
   if (!rows.length) { toast('Sin datos para exportar','warning'); return; }
-  const result = buildReportePDF(
+
+  // Calcular totales por tipo desde los datos reales
+  const payments = DB.get('payments', []);
+  const totEfectivo      = payments.filter(p=>p.metodo==='efectivo').reduce((s,p)=>s+Number(p.monto),0);
+  const totTransferencia = payments.filter(p=>p.metodo==='transferencia').reduce((s,p)=>s+Number(p.monto),0);
+  const totTarjeta       = payments.filter(p=>p.metodo==='tarjeta').reduce((s,p)=>s+Number(p.monto),0);
+  const totGeneral       = totEfectivo + totTransferencia + totTarjeta;
+
+  const result = buildReportePagosPDF(
     title, 'REPORTE DE INGRESOS',
     ['FECHA','MIEMBRO','PLAN','MONTO','METODO'],
     rows,
-    ['Tu esfuerzo construye el mejor gimnasio.', 'Cada pago es un paso hacia la mejor version de tu miembro. — JOMAC']
+    ['Tu esfuerzo construye el mejor gimnasio.', 'Cada pago es un paso hacia la mejor version de tu miembro. — JOMAC'],
+    { efectivo: totEfectivo, transferencia: totTransferencia, tarjeta: totTarjeta, total: totGeneral }
   );
   if (compartir) compartirPDFWhatsApp(result, '📊 ' + title + ' — JOMAC Gym Manager');
 }
