@@ -2303,6 +2303,11 @@ async function restaurarAlIniciar() {
       if (d.instructores) DB.set('instructores',  d.instructores);
       if (d.productos)    DB.set('productos',     d.productos);
       if (d.movimientos)  DB.set('movimientos',   d.movimientos);
+      if (d.cats_prod)    DB.set('cats_prod',     d.cats_prod);
+      if (d.cats_ing)     DB.set('cats_ing',      d.cats_ing);
+      if (d.cats_egr)     DB.set('cats_egr',      d.cats_egr);
+      if (d.equipos)      DB.set('equipos',       d.equipos);
+      if (d.catEgrItems)  DB.set('catEgrItems',   d.catEgrItems);
       if (d.config)       DB.set('config',        d.config);
       if (loginBrand) {
         loginBrand.style.color = '#7FFF00';
@@ -5796,6 +5801,7 @@ async function syncGoogleSheets(silencioso=false) {
       body: JSON.stringify({ action:'syncAll', data:{ members, payments, attendance, horarios, instructores,
         productos: DB.get('productos',[]), movimientos: DB.get('movimientos',[]),
         cats_prod: DB.get('cats_prod', null), cats_ing: DB.get('cats_ing', null), cats_egr: DB.get('cats_egr', null),
+        equipos: DB.get('equipos', []), catEgrItems: DB.get('catEgrItems', {}),
         config: DB.get('config',{}) } })
     });
     const d = await r.json();
@@ -5845,6 +5851,8 @@ async function restaurarDesdeSheets() {
     if (d.cats_prod)   DB.set('cats_prod',   d.cats_prod);
     if (d.cats_ing)    DB.set('cats_ing',    d.cats_ing);
     if (d.cats_egr)    DB.set('cats_egr',    d.cats_egr);
+    if (d.equipos)     DB.set('equipos',     d.equipos);
+    if (d.catEgrItems) DB.set('catEgrItems', d.catEgrItems);
     if (d.config)      DB.set('config',      d.config);
     toast('✔ Datos restaurados desde Google Sheets','success');
     setTimeout(() => location.reload(), 1200);
