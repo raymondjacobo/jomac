@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>JOMAC — Entrenamiento Funcional bbbbbb</title>
+<title>JOMAC — Entrenamiento Funcional</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600;700;900&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet"/>
@@ -642,6 +642,22 @@
   }
   .modal-title { font-family:var(--font-display); font-size:1.5rem; letter-spacing:3px; margin-bottom:1.5rem; color:var(--text); }
   .modal-footer { display:flex; justify-content:flex-end; gap:.7rem; margin-top:1.5rem; padding-top:1.2rem; border-top:1px solid var(--border); }
+  .modal-box {
+    background:#fff; border:1px solid var(--border); border-top:3px solid var(--red);
+    border-radius:10px; padding:1.6rem; width:min(500px,96vw);
+    max-height:90vh; overflow-y:auto; animation:fadeUp .25s ease;
+    box-shadow:0 20px 60px rgba(0,0,0,.15);
+  }
+  .modal-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:1.2rem; padding-bottom:.8rem; border-bottom:1px solid var(--border);
+  }
+  .modal-header .modal-title { margin-bottom:0; font-size:1.15rem; }
+  .modal-close {
+    background:none; border:none; cursor:pointer; font-size:1.1rem;
+    color:var(--text-light); line-height:1; padding:.2rem .4rem;
+  }
+  .modal-close:hover { color:var(--red); }
 
   /* ─── CHECKIN SCREEN ────────────────── */
   .checkin-wrap { max-width:460px; margin:0 auto; text-align:center; }
@@ -954,6 +970,12 @@
           <div class="kpi-value" id="kpiIngresosAnio">$0</div>
           <div class="kpi-icon">📊</div>
           <div class="kpi-sub" id="kpiAnioSub">Año en curso</div>
+        </div>
+        <div class="kpi-card yellow" id="kpiVentasCard" style="display:none;">
+          <div class="kpi-label">VENTAS MES</div>
+          <div class="kpi-value" id="kpiVentasMes">$0</div>
+          <div class="kpi-icon">🛒</div>
+          <div class="kpi-sub">Módulo Finanzas</div>
         </div>
       </div>
 
@@ -1551,6 +1573,43 @@
     <!-- ══════════════════════════════════════════════════════ -->
     <!-- INVENTARIO                                            -->
     <!-- ══════════════════════════════════════════════════════ -->
+    <div class="page" id="pageCatalogos">
+      <div class="page-header"><h1>📦 CATÁLOGOS</h1></div>
+
+      <div class="config-section" style="border:1.5px solid #DBEAFE;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="config-section-title" style="color:#2563EB;margin:0;">📦 CATEGORÍAS DE PRODUCTOS</div>
+          <button class="btn-primary" style="font-size:.75rem;padding:.35rem .8rem;background:#2563EB;border-color:#2563EB;" onclick="abrirModalCategoria('prod')">+ AGREGAR</button>
+        </div>
+        <div id="listCatProd"></div>
+      </div>
+
+      <div class="config-section" style="border:1.5px solid #BBF7D0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="config-section-title" style="color:#16A34A;margin:0;">💰 CATEGORÍAS DE INGRESOS</div>
+          <button class="btn-primary" style="font-size:.75rem;padding:.35rem .8rem;background:#16A34A;border-color:#16A34A;" onclick="abrirModalCategoria('ing')">+ AGREGAR</button>
+        </div>
+        <div id="listCatIng"></div>
+      </div>
+
+      <div class="config-section" style="border:1.5px solid #FECACA;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="config-section-title" style="color:#E3000F;margin:0;">💸 CATEGORÍAS DE EGRESOS</div>
+          <button class="btn-primary" style="font-size:.75rem;padding:.35rem .8rem;" onclick="abrirModalCategoria('egr')">+ AGREGAR</button>
+        </div>
+        <div id="listCatEgr"></div>
+      </div>
+
+      <div class="config-section" style="border:1.5px solid #FDE68A;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="config-section-title" style="color:#B45309;margin:0;">🛠️ CATÁLOGO DE EQUIPOS</div>
+          <button class="btn-primary" style="font-size:.75rem;padding:.35rem .8rem;background:#B45309;border-color:#B45309;" onclick="abrirFormEquipo()">+ AGREGAR</button>
+        </div>
+        <div style="font-size:.8rem;color:var(--text-light);margin-bottom:.7rem;">Se usa en Finanzas &gt; Egresos &gt; Compra de equipos.</div>
+        <div id="listEquipos"></div>
+      </div>
+    </div>
+
     <div class="page" id="pageInventario">
       <div class="page-header">
         <div><div class="page-title">INVENTARIO</div><div class="page-subtitle">PRODUCTOS Y STOCK</div></div>
@@ -1641,17 +1700,15 @@
 <!-- Modal: Producto -->
 <div class="modal-overlay" id="modalProducto">
   <div class="modal-box">
-    <div class="modal-header"><span class="modal-title">PRODUCTO</span><button class="modal-close" onclick="cerrarModal('modalProducto')">✕</button></div>
+    <div class="modal-header"><span class="modal-title">PRODUCTO</span><button class="modal-close" onclick="closeModal('modalProducto')">✕</button></div>
     <input type="hidden" id="prodId"/>
     <div class="field-group"><label>NOMBRE</label><input type="text" id="prodNombre" placeholder="Ej. Agua 500ml"/></div>
-    <div class="field-group"><label>CATEGORÍA</label>
-      <select id="prodCategoria">
-        <option value="bebidas">Bebidas</option>
-        <option value="suplementos">Suplementos</option>
-        <option value="snacks">Snacks</option>
-        <option value="accesorios">Accesorios</option>
-        <option value="otros">Otros</option>
-      </select>
+    <div class="field-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;">
+        <label style="margin:0;">CATEGORÍA</label>
+        <button onclick="abrirModalCategoria('prod')" style="background:none;border:none;color:#2563EB;font-size:.75rem;font-weight:700;cursor:pointer;font-family:var(--font-cond);letter-spacing:1px;">+ NUEVA</button>
+      </div>
+      <select id="prodCategoria"></select>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;">
       <div class="field-group"><label>PRECIO COMPRA</label><input type="number" id="prodPrecioCompra" placeholder="0.00" min="0" step="0.01"/></div>
@@ -1664,7 +1721,7 @@
     <div class="field-group"><label>NOTAS</label><input type="text" id="prodNotas" placeholder="Opcional"/></div>
     <div style="display:flex;gap:.8rem;margin-top:1rem;">
       <button class="btn-primary" onclick="guardarProducto()" style="flex:1;">GUARDAR</button>
-      <button class="btn-secondary" onclick="cerrarModal('modalProducto')" style="flex:1;">CANCELAR</button>
+      <button class="btn-secondary" onclick="closeModal('modalProducto')" style="flex:1;">CANCELAR</button>
     </div>
   </div>
 </div>
@@ -1672,7 +1729,7 @@
 <!-- Modal: Venta -->
 <div class="modal-overlay" id="modalVenta">
   <div class="modal-box">
-    <div class="modal-header"><span class="modal-title">REGISTRAR VENTA</span><button class="modal-close" onclick="cerrarModal('modalVenta')">✕</button></div>
+    <div class="modal-header"><span class="modal-title">REGISTRAR VENTA</span><button class="modal-close" onclick="closeModal('modalVenta')">✕</button></div>
     <div class="field-group"><label>PRODUCTO</label>
       <select id="ventaProducto" onchange="actualizarPrecioVenta()">
         <option value="">-- Seleccionar --</option>
@@ -1683,6 +1740,13 @@
       <div class="field-group"><label>PRECIO UNITARIO</label><input type="number" id="ventaPrecioUnit" placeholder="0.00" step="0.01"/></div>
     </div>
     <div class="field-group"><label>TOTAL</label><input type="number" id="ventaTotal" placeholder="0.00" step="0.01" readonly style="background:#f3f3f3;"/></div>
+    <div class="field-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;">
+        <label style="margin:0;">CATEGORÍA</label>
+        <button onclick="abrirModalCategoria('ing')" style="background:none;border:none;color:#16A34A;font-size:.75rem;font-weight:700;cursor:pointer;font-family:var(--font-cond);letter-spacing:1px;">+ NUEVA</button>
+      </div>
+      <select id="ventaCategoriaIng"></select>
+    </div>
     <div class="field-group"><label>MÉTODO DE PAGO</label>
       <select id="ventaMetodo">
         <option value="efectivo">💵 Efectivo</option>
@@ -1694,7 +1758,7 @@
     <div class="field-group"><label>NOTAS</label><input type="text" id="ventaNotas" placeholder="Opcional"/></div>
     <div style="display:flex;gap:.8rem;margin-top:1rem;">
       <button class="btn-primary" onclick="guardarVenta()" style="flex:1;background:#16A34A;border-color:#16A34A;">REGISTRAR VENTA</button>
-      <button class="btn-secondary" onclick="cerrarModal('modalVenta')" style="flex:1;">CANCELAR</button>
+      <button class="btn-secondary" onclick="closeModal('modalVenta')" style="flex:1;">CANCELAR</button>
     </div>
   </div>
 </div>
@@ -1702,20 +1766,17 @@
 <!-- Modal: Egreso -->
 <div class="modal-overlay" id="modalEgreso">
   <div class="modal-box">
-    <div class="modal-header"><span class="modal-title">REGISTRAR EGRESO</span><button class="modal-close" onclick="cerrarModal('modalEgreso')">✕</button></div>
+    <div class="modal-header"><span class="modal-title">REGISTRAR EGRESO</span><button class="modal-close" onclick="closeModal('modalEgreso')">✕</button></div>
     <div class="field-group"><label>CONCEPTO</label><input type="text" id="egresoConcepto" placeholder="Ej. Renta del local"/></div>
-    <div class="field-group"><label>CATEGORÍA</label>
-      <select id="egresoCategoria" onchange="toggleEgresoProducto()">
-        <option value="compra_insumos">Compra de insumos</option>
-        <option value="renta">Renta</option>
-        <option value="sueldos">Sueldos</option>
-        <option value="servicios">Servicios (luz, agua, internet)</option>
-        <option value="mantenimiento">Mantenimiento</option>
-        <option value="otros">Otros</option>
-      </select>
+    <div class="field-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;">
+        <label style="margin:0;">CATEGORÍA</label>
+        <button onclick="abrirModalCategoria('egr')" style="background:none;border:none;color:var(--red);font-size:.75rem;font-weight:700;cursor:pointer;font-family:var(--font-cond);letter-spacing:1px;">+ NUEVA</button>
+      </div>
+      <select id="egresoCategoria" onchange="toggleEgresoProducto()"></select>
     </div>
     <div id="egresoProductoWrap" style="display:none;">
-      <div class="field-group"><label>PRODUCTO (si es compra de insumos)</label>
+      <div class="field-group"><label id="egresoProductoLabel">PRODUCTO (OPCIONAL)</label>
         <select id="egresoProducto" onchange="actualizarEgresoProducto()">
           <option value="">-- Sin producto específico --</option>
         </select>
@@ -1734,10 +1795,13 @@
     <div class="field-group"><label>NOTAS</label><input type="text" id="egresoNotas" placeholder="Opcional"/></div>
     <div style="display:flex;gap:.8rem;margin-top:1rem;">
       <button class="btn-primary" onclick="guardarEgreso()" style="flex:1;background:#DC2626;border-color:#DC2626;">REGISTRAR EGRESO</button>
-      <button class="btn-secondary" onclick="cerrarModal('modalEgreso')" style="flex:1;">CANCELAR</button>
+      <button class="btn-secondary" onclick="closeModal('modalEgreso')" style="flex:1;">CANCELAR</button>
     </div>
   </div>
 </div>
+
+<!-- Modal: Categoría -->
+
 
 <!-- Modal: Nuevo Miembro -->
 <div class="modal-overlay" id="modalNuevoMiembro">
@@ -2403,6 +2467,7 @@ const ADMIN_NAV = [
   { id:'inventario',   label:'Inventario',      icon:'📦', page:'pageInventario' },
   { id:'caja',         label:'Caja',            icon:'💰', page:'pageCaja' },
   { id:'reporteFinanciero', label:'Rep. Financiero', icon:'📉', page:'pageReporteFinanciero' },
+  { id:'catalogos',    label:'Catálogos',       icon:'🗂️', page:'pageCatalogos' },
   { section: 'SISTEMA' },
   { id:'config',     label:'Configuración', icon:'⚙️', page:'pageConfig' },
 ];
@@ -2420,6 +2485,11 @@ const INSTRUCTOR_NAV = [
   { section: 'REPORTES' },
   { id:'reportePagos',      label:'Rep. Pagos',      icon:'📈', page:'pageReportePagos' },
   { id:'reporteAsistencia', label:'Rep. Asistencia',  icon:'📅', page:'pageReporteAsistencia' },
+  { section: 'FINANZAS' },
+  { id:'inventario',   label:'Inventario',      icon:'📦', page:'pageInventario' },
+  { id:'caja',         label:'Caja',            icon:'💰', page:'pageCaja' },
+  { id:'reporteFinanciero', label:'Rep. Financiero', icon:'📉', page:'pageReporteFinanciero' },
+  { id:'catalogos',    label:'Catálogos',       icon:'🗂️', page:'pageCatalogos' },
 ];
 
 const MEMBER_NAV = [
@@ -2487,7 +2557,7 @@ function buildNav() {
       const skipSeccion = (item.section === 'FINANZAS' && !finanzasActivo);
       if (!skipSeccion) el.innerHTML += `<div class="nav-section">${item.section}</div>`;
     } else {
-      const esFinanzas = ['inventario','caja','reporteFinanciero'].includes(item.id);
+      const esFinanzas = ['inventario','caja','reporteFinanciero','catalogos'].includes(item.id);
       if (esFinanzas && !finanzasActivo) return;
       el.innerHTML += `<div class="nav-item" id="nav_${item.id}" onclick="navigateTo('${item.id}')">
         <span class="nav-icon">${item.icon}</span>${item.label}
@@ -2525,6 +2595,7 @@ function navigateTo(id) {
   if (id==='mispagos')    loadMisPagos();
   if (id==='cumpleanios') loadCumpleanios();
   if (id==='config')     { loadConfig(); verInfoBackup(); actualizarToggleFinanzas(DB.get('config',{}).finanzasActivo === true || DB.get('config',{}).finanzasActivo === 'true'); }
+  if (id==='catalogos')  { renderCatalogoCats(); }
 }
 
 function logout() {
@@ -2591,6 +2662,25 @@ function loadDashboard() {
 
   const elMes = document.getElementById('kpiIngresosMes');
   if (elMes) elMes.textContent = '$'+ingrMes.toLocaleString();
+
+  // KPI Ventas del módulo Finanzas (independiente de mensualidades)
+  const kpiVentasCard = document.getElementById('kpiVentasCard');
+  const finanzasActivoDash = (currentUser && currentUser.type === 'admin') ||
+    DB.get('config',{}).finanzasActivo === true || DB.get('config',{}).finanzasActivo === 'true';
+  if (kpiVentasCard) {
+    if (finanzasActivoDash) {
+      kpiVentasCard.style.display = '';
+      const movimientos = DB.get('movimientos', []);
+      const ventasMes = movimientos
+        .filter(mv => mv.tipo === 'ingreso' && mv.categoria === 'ventas' && limpiarFecha(mv.fecha).substring(0,7) === thisMonth)
+        .reduce((s,mv) => s + Number(mv.monto||0), 0);
+      const elVentas = document.getElementById('kpiVentasMes');
+      if (elVentas) elVentas.textContent = '$'+ventasMes.toLocaleString('es-MX');
+    } else {
+      kpiVentasCard.style.display = 'none';
+    }
+  }
+
   renderDashCumple();
 
   // Recent attendance
@@ -4680,29 +4770,30 @@ function renderInventario() {
 }
 
 function abrirModalProducto() {
+  actualizarSelectsCategorias();
   document.getElementById('prodId').value = '';
   document.getElementById('prodNombre').value = '';
-  document.getElementById('prodCategoria').value = 'bebidas';
   document.getElementById('prodPrecioCompra').value = '';
   document.getElementById('prodPrecioVenta').value = '';
   document.getElementById('prodStock').value = '';
   document.getElementById('prodStockMin').value = '5';
   document.getElementById('prodNotas').value = '';
-  abrirModal('modalProducto');
+  openModal('modalProducto');
 }
 
 function editarProducto(id) {
   const p = DB.get('productos',[]).find(x=>x.id===id);
   if (!p) return;
+  actualizarSelectsCategorias();
   document.getElementById('prodId').value = p.id;
   document.getElementById('prodNombre').value = p.nombre||'';
-  document.getElementById('prodCategoria').value = p.categoria||'bebidas';
+  document.getElementById('prodCategoria').value = p.categoria||'';
   document.getElementById('prodPrecioCompra').value = p.precioCompra||'';
   document.getElementById('prodPrecioVenta').value = p.precioVenta||'';
   document.getElementById('prodStock').value = p.stock||0;
   document.getElementById('prodStockMin').value = p.stockMin||5;
   document.getElementById('prodNotas').value = p.notas||'';
-  abrirModal('modalProducto');
+  openModal('modalProducto');
 }
 
 function guardarProducto() {
@@ -4723,7 +4814,7 @@ function guardarProducto() {
   const idx = productos.findIndex(p=>p.id===id);
   if (idx>=0) productos[idx]=prod; else productos.push(prod);
   DB.set('productos', productos);
-  cerrarModal('modalProducto');
+  closeModal('modalProducto');
   renderInventario();
   syncGoogleSheets(true);
   toast('Producto guardado','success');
@@ -4794,18 +4885,43 @@ function renderCaja() {
   }
 }
 
+/* ─── Helper: arma <option>s de productos agrupados por categoría (optgroup) ─── */
+function buildProductOptionsAgrupados(productos, {conStock=false} = {}) {
+  const catsProd = getCats('prod');
+  const grupos = {};
+  const sinCat = [];
+  productos.forEach(p => {
+    const cat = catsProd.find(c=>c.id===p.categoria);
+    if (cat) {
+      if (!grupos[cat.id]) grupos[cat.id] = {label: `${cat.icon} ${cat.nombre}`, items: []};
+      grupos[cat.id].items.push(p);
+    } else {
+      sinCat.push(p);
+    }
+  });
+  const optHtml = p => conStock
+    ? `<option value="${p.id}" data-precio="${p.precioVenta}" data-stock="${p.stock}">${p.nombre} (stock: ${p.stock})</option>`
+    : `<option value="${p.id}" data-precio="${p.precioCompra||0}">${p.nombre}</option>`;
+  let html = catsProd
+    .filter(c=>grupos[c.id])
+    .map(c => `<optgroup label="${grupos[c.id].label}">${grupos[c.id].items.map(optHtml).join('')}</optgroup>`)
+    .join('');
+  if (sinCat.length) html += `<optgroup label="Sin categoría">${sinCat.map(optHtml).join('')}</optgroup>`;
+  return html;
+}
+
 function abrirModalVenta() {
+  actualizarSelectsCategorias();
   const productos = DB.get('productos',[]).filter(p=>p.activo!==false && Number(p.stock||0)>0);
   const sel = document.getElementById('ventaProducto');
-  sel.innerHTML = '<option value="">-- Seleccionar --</option>' +
-    productos.map(p=>`<option value="${p.id}" data-precio="${p.precioVenta}" data-stock="${p.stock}">${p.nombre} (stock: ${p.stock})</option>`).join('');
+  sel.innerHTML = '<option value="">-- Seleccionar --</option>' + buildProductOptionsAgrupados(productos, {conStock:true});
   document.getElementById('ventaCantidad').value = 1;
   document.getElementById('ventaPrecioUnit').value = '';
   document.getElementById('ventaTotal').value = '';
   document.getElementById('ventaMetodo').value = 'efectivo';
   document.getElementById('ventaFecha').value = fmtDate(new Date());
   document.getElementById('ventaNotas').value = '';
-  abrirModal('modalVenta');
+  openModal('modalVenta');
 }
 
 function actualizarPrecioVenta() {
@@ -4849,7 +4965,7 @@ function guardarVenta() {
   const movimientos = DB.get('movimientos',[]);
   movimientos.push(mov);
   DB.set('movimientos', movimientos);
-  cerrarModal('modalVenta');
+  closeModal('modalVenta');
   renderCaja();
   renderInventario();
   syncGoogleSheets(true);
@@ -4860,25 +4976,65 @@ function guardarVenta() {
 }
 
 function abrirModalEgreso() {
-  const productos = DB.get('productos',[]).filter(p=>p.activo!==false);
-  const sel = document.getElementById('egresoProducto');
-  sel.innerHTML = '<option value="">-- Sin producto específico --</option>' +
-    productos.map(p=>`<option value="${p.id}" data-precio="${p.precioCompra}">${p.nombre}</option>`).join('');
+  actualizarSelectsCategorias();
   document.getElementById('egresoConcepto').value = '';
-  document.getElementById('egresoCategoria').value = 'compra_insumos';
+  const defaultEgr = getCats('egr').find(c=>c.nombre.toLowerCase().includes('insumo'))?.id || getCats('egr')[0]?.id || '';
+  document.getElementById('egresoCategoria').value = defaultEgr;
   document.getElementById('egresoMonto').value = '';
   document.getElementById('egresoMetodo').value = 'efectivo';
   document.getElementById('egresoFecha').value = fmtDate(new Date());
   document.getElementById('egresoNotas').value = '';
   document.getElementById('egresoCantidad').value = 1;
   toggleEgresoProducto();
-  abrirModal('modalEgreso');
+  openModal('modalEgreso');
+}
+
+function egresoProductoModo() {
+  const sel = document.getElementById('egresoCategoria');
+  const catId = sel?.value;
+  const cat = getCats('egr').find(c=>c.id===catId);
+  if (cat && 'vincula' in cat) {
+    if (cat.vincula === 'productos') return 'producto';
+    if (cat.vincula === 'equipos') return 'equipo';
+    if (cat.vincula === 'propio') return 'propio';
+    return 'ninguno'; // usuario eligió explícitamente "Sin producto/equipo asociado"
+  }
+  // Fallback para categorías antiguas sin campo 'vincula' definido: adivinar por nombre
+  const text = (cat?.nombre||'').toLowerCase();
+  if (text.includes('equipo')) return 'equipo';
+  if (text.includes('insumo') || text.includes('compra')) return 'producto';
+  return 'ninguno';
 }
 
 function toggleEgresoProducto() {
-  const cat  = document.getElementById('egresoCategoria').value;
+  const modo = egresoProductoModo();
   const wrap = document.getElementById('egresoProductoWrap');
-  if (wrap) wrap.style.display = cat==='compra_insumos' ? 'block' : 'none';
+  const sel  = document.getElementById('egresoProducto');
+  const label = document.getElementById('egresoProductoLabel');
+  if (!wrap || !sel) return;
+  if (modo === 'producto') {
+    const productos = DB.get('productos',[]).filter(p=>p.activo!==false);
+    sel.innerHTML = '<option value="">-- Sin producto específico --</option>' + buildProductOptionsAgrupados(productos, {conStock:false});
+    if (label) label.textContent = 'PRODUCTO (OPCIONAL)';
+    wrap.style.display = 'block';
+  } else if (modo === 'equipo') {
+    const equipos = getEquipos();
+    sel.innerHTML = '<option value="">-- Sin equipo específico --</option>' +
+      equipos.map(e=>`<option value="${e.id}" data-precio="${e.precio||0}">${e.nombre}</option>`).join('');
+    if (label) label.textContent = 'EQUIPO (OPCIONAL)';
+    wrap.style.display = 'block';
+  } else if (modo === 'propio') {
+    const catId = document.getElementById('egresoCategoria')?.value;
+    const items = getCatalogoPropio(catId);
+    const catNombre = getCats('egr').find(c=>c.id===catId)?.nombre || 'artículo';
+    sel.innerHTML = `<option value="">-- Sin artículo específico --</option>` +
+      items.map(it=>`<option value="${it.id}" data-precio="${it.precio||0}">${it.nombre}</option>`).join('');
+    if (label) label.textContent = `${catNombre.toUpperCase()} (OPCIONAL)`;
+    wrap.style.display = 'block';
+  } else {
+    sel.innerHTML = '';
+    wrap.style.display = 'none';
+  }
 }
 
 function actualizarEgresoProducto() {
@@ -4900,7 +5056,8 @@ function guardarEgreso() {
   const cant      = Number(document.getElementById('egresoCantidad').value||1);
 
   // Si es compra de insumos con producto, sumar al stock
-  if (categoria==='compra_insumos' && prodId) {
+  const modoActual = egresoProductoModo();
+  if (modoActual==='producto' && prodId) {
     const productos = DB.get('productos',[]);
     const pidx = productos.findIndex(p=>p.id===prodId);
     if (pidx>=0) {
@@ -4923,7 +5080,7 @@ function guardarEgreso() {
   const movimientos = DB.get('movimientos',[]);
   movimientos.push(mov);
   DB.set('movimientos', movimientos);
-  cerrarModal('modalEgreso');
+  closeModal('modalEgreso');
   renderCaja();
   renderInventario();
   syncGoogleSheets(true);
@@ -4997,6 +5154,321 @@ function renderReporteFinanciero() {
       </tbody></table>
     </div>
   `;
+}
+
+// ════════════════════════════════════════════════════════════════
+// CATÁLOGOS DE CATEGORÍAS
+// ════════════════════════════════════════════════════════════════
+const DEFAULT_CATS = {
+  prod: [{id:'p1',nombre:'Bebidas',icon:'🥤'},{id:'p2',nombre:'Suplementos',icon:'💊'},{id:'p3',nombre:'Snacks',icon:'🍫'},{id:'p4',nombre:'Accesorios',icon:'🎽'},{id:'p5',nombre:'Otros',icon:'📦'}],
+  ing:  [{id:'i1',nombre:'Ventas',icon:'🛒'},{id:'i2',nombre:'Eventos especiales',icon:'🎉'},{id:'i3',nombre:'Otros ingresos',icon:'💰'}],
+  egr:  [{id:'e1',nombre:'Compra de insumos',icon:'📦'},{id:'e2',nombre:'Renta',icon:'🏠'},{id:'e3',nombre:'Sueldos',icon:'👤'},{id:'e4',nombre:'Servicios',icon:'⚡'},{id:'e5',nombre:'Mantenimiento',icon:'🔧'},{id:'e6',nombre:'Otros',icon:'📌'}]
+};
+
+function handleCatBtn(el) {
+  const btn    = el.closest ? el.closest('[data-accion]') : el;
+  const tipo   = btn.dataset.tipo;
+  const id     = btn.dataset.id;
+  const accion = btn.dataset.accion;
+  if (accion === 'editar')   abrirModalCategoria(tipo, id);
+  if (accion === 'eliminar') eliminarCategoria(tipo, id);
+}
+
+function getCats(tipo) {
+  const saved = DB.get('cats_'+tipo, null);
+  return saved || DEFAULT_CATS[tipo];
+}
+function saveCats(tipo, cats) { DB.set('cats_'+tipo, cats); }
+
+function renderCatalogoCats() {
+  ['prod','ing','egr'].forEach(tipo => {
+    const listId = {prod:'listCatProd', ing:'listCatIng', egr:'listCatEgr'}[tipo];
+    const el = document.getElementById(listId);
+    if (!el) return;
+    const cats = getCats(tipo);
+    el.innerHTML = cats.map(c=>`
+      <div style="display:flex;align-items:center;gap:.7rem;padding:.55rem .8rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:.4rem;">
+        <span style="font-size:1.2rem;">${c.icon}</span>
+        <span style="flex:1;font-size:.88rem;font-weight:500;">${c.nombre}</span>
+        ${(tipo==='egr' && c.vincula==='propio') ? `<button data-id="${c.id}" onclick="abrirCatalogoPropio('${c.id}')" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#B45309;" title="Administrar artículos de esta categoría">📦</button>` : ''}
+        <button data-tipo="${tipo}" data-id="${c.id}" data-accion="editar" onclick="handleCatBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--text-light);">✏️</button>
+        <button data-tipo="${tipo}" data-id="${c.id}" data-accion="eliminar" onclick="handleCatBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>
+      </div>`).join('');
+  });
+  // Actualizar selects de modales
+  actualizarSelectsCategorias();
+  renderListEquipos();
+}
+
+function abrirModalCategoria(tipo, id=null) {
+  const cats = getCats(tipo);
+  const cat  = id ? cats.find(c=>c.id===id) : null;
+
+  // Remover formulario anterior si existe
+  const prev = document.getElementById('catInlineForm');
+  if (prev) prev.remove();
+
+  // ID del contenedor donde insertar
+  const listId = {prod:'listCatProd', ing:'listCatIng', egr:'listCatEgr'}[tipo];
+  const listEl = document.getElementById(listId);
+  if (!listEl) return;
+
+  const colors = {prod:'#2563EB', ing:'#16A34A', egr:'var(--red)'};
+  const color  = colors[tipo];
+
+  const form = document.createElement('div');
+  form.id = 'catInlineForm';
+  form.style.cssText = `background:#fff;border:2px solid ${color};border-radius:8px;padding:1rem;margin-bottom:.8rem;`;
+  form.innerHTML = `
+    <div style="font-family:var(--font-cond);font-size:.8rem;font-weight:700;letter-spacing:1px;color:${color};margin-bottom:.7rem;">
+      ${id ? 'EDITAR' : 'NUEVA'} CATEGORÍA
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+      <input id="catInlineIcono" type="text" maxlength="2" placeholder="🥤"
+        value="${cat?.icon||''}"
+        style="width:50px;font-size:1.3rem;text-align:center;border:1px solid var(--border);border-radius:6px;padding:.4rem;"/>
+      <input id="catInlineNombre" type="text" placeholder="Nombre de la categoría"
+        value="${cat?.nombre||''}"
+        style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:6px;padding:.45rem .7rem;font-size:.88rem;font-family:var(--font-body);"/>
+      ${tipo==='egr' ? `
+      <select id="catInlineVincula" style="border:1px solid var(--border);border-radius:6px;padding:.45rem .5rem;font-size:.85rem;font-family:var(--font-body);min-width:170px;">
+        <option value="" ${!cat?.vincula?'selected':''}>Sin producto/equipo asociado</option>
+        <option value="productos" ${cat?.vincula==='productos'?'selected':''}>Vincular a Productos (insumos)</option>
+        <option value="equipos" ${cat?.vincula==='equipos'?'selected':''}>Vincular a Equipos</option>
+        <option value="propio" ${cat?.vincula==='propio'?'selected':''}>Catálogo propio (artículos de esta categoría)</option>
+      </select>` : ''}
+      <button onclick="guardarCatInline('${tipo}','${id||''}')"
+        style="background:${color};color:#fff;border:none;border-radius:6px;padding:.45rem 1rem;font-family:var(--font-cond);font-size:.82rem;font-weight:700;letter-spacing:1px;cursor:pointer;">
+        GUARDAR
+      </button>
+      <button onclick="document.getElementById('catInlineForm').remove()"
+        style="background:transparent;color:var(--text-light);border:1px solid var(--border);border-radius:6px;padding:.45rem .8rem;font-family:var(--font-cond);font-size:.82rem;cursor:pointer;">
+        CANCELAR
+      </button>
+    </div>`;
+
+  listEl.insertBefore(form, listEl.firstChild);
+  document.getElementById('catInlineNombre').focus();
+}
+
+function guardarCatInline(tipo, id) {
+  const nombre  = document.getElementById('catInlineNombre')?.value.trim();
+  const icon    = document.getElementById('catInlineIcono')?.value.trim() || '📌';
+  const vincula = tipo==='egr' ? (document.getElementById('catInlineVincula')?.value || '') : undefined;
+  if (!nombre) { document.getElementById('catInlineNombre').focus(); return; }
+  const cats = getCats(tipo);
+  if (id) {
+    const idx = cats.findIndex(c=>c.id===id);
+    if (idx>=0) cats[idx] = {...cats[idx], nombre, icon, ...(tipo==='egr' ? {vincula} : {})};
+  } else {
+    cats.push({id: tipo+Date.now(), nombre, icon, ...(tipo==='egr' ? {vincula} : {})});
+  }
+  saveCats(tipo, cats);
+  document.getElementById('catInlineForm')?.remove();
+  renderCatalogoCats();
+  actualizarSelectsCategorias();
+  syncGoogleSheets(true);
+  toast(id ? 'Categoría actualizada' : 'Categoría agregada', 'success');
+}
+
+/* ─── Catálogo propio por categoría de egreso (ej. Uniformes) ─── */
+function getCatalogoPropio(catId) {
+  const all = DB.get('catEgrItems', {});
+  return all[catId] || [];
+}
+function saveCatalogoPropio(catId, items) {
+  const all = DB.get('catEgrItems', {});
+  all[catId] = items;
+  DB.set('catEgrItems', all);
+}
+
+function abrirCatalogoPropio(catId) {
+  const cat = getCats('egr').find(c=>c.id===catId);
+  if (!cat) return;
+  const prev = document.getElementById('catalogoPropioOverlay');
+  if (prev) prev.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'catalogoPropioOverlay';
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:480px;">
+      <div class="modal-header"><span class="modal-title">🛠️ ARTÍCULOS · ${cat.nombre.toUpperCase()}</span><button class="modal-close" onclick="document.getElementById('catalogoPropioOverlay').remove()">✕</button></div>
+      <div id="catalogoPropioList"></div>
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);">
+        <input id="catalogoPropioNombre" type="text" placeholder="Nombre del artículo"
+          style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:6px;padding:.45rem .7rem;font-size:.88rem;font-family:var(--font-body);"/>
+        <input id="catalogoPropioPrecio" type="number" placeholder="Precio ref. (opcional)"
+          style="width:130px;border:1px solid var(--border);border-radius:6px;padding:.45rem .7rem;font-size:.88rem;font-family:var(--font-body);"/>
+        <button onclick="agregarItemCatalogoPropio('${catId}')" style="background:#B45309;color:#fff;border:none;border-radius:6px;padding:.45rem 1rem;font-family:var(--font-cond);font-size:.82rem;font-weight:700;letter-spacing:1px;cursor:pointer;">+ AGREGAR</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  renderCatalogoPropioList(catId);
+}
+
+function renderCatalogoPropioList(catId) {
+  const el = document.getElementById('catalogoPropioList');
+  if (!el) return;
+  const items = getCatalogoPropio(catId);
+  el.innerHTML = items.length ? items.map(it=>`
+    <div style="display:flex;align-items:center;gap:.7rem;padding:.5rem .7rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:.4rem;">
+      <span style="flex:1;font-size:.87rem;font-weight:500;">${it.nombre}${it.precio?` — $${Number(it.precio).toLocaleString('es-MX')}`:''}</span>
+      <button onclick="eliminarItemCatalogoPropio('${catId}','${it.id}')" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>
+    </div>`).join('') : `<div style="font-size:.83rem;color:var(--text-light);padding:.5rem;">Sin artículos todavía. Agrega el primero abajo.</div>`;
+}
+
+function agregarItemCatalogoPropio(catId) {
+  const nombre = document.getElementById('catalogoPropioNombre')?.value.trim();
+  const precio = Number(document.getElementById('catalogoPropioPrecio')?.value||0);
+  if (!nombre) { document.getElementById('catalogoPropioNombre').focus(); return; }
+  const items = getCatalogoPropio(catId);
+  items.push({id:'item'+Date.now(), nombre, precio});
+  saveCatalogoPropio(catId, items);
+  document.getElementById('catalogoPropioNombre').value = '';
+  document.getElementById('catalogoPropioPrecio').value = '';
+  renderCatalogoPropioList(catId);
+  syncGoogleSheets(true);
+  toast('Artículo agregado', 'success');
+}
+
+function eliminarItemCatalogoPropio(catId, itemId) {
+  if (!confirm('¿Eliminar este artículo?')) return;
+  saveCatalogoPropio(catId, getCatalogoPropio(catId).filter(it=>it.id!==itemId));
+  renderCatalogoPropioList(catId);
+  toast('Artículo eliminado', 'success');
+}
+
+function guardarCategoria() {
+  const tipo   = document.getElementById('catTipo').value;
+  const id     = document.getElementById('catId').value;
+  const nombre = document.getElementById('catNombre').value.trim();
+  const icon   = document.getElementById('catIcono').value.trim() || '📌';
+  if (!nombre) { document.getElementById('catNombre').focus(); return; }
+  const cats = getCats(tipo);
+  if (id) {
+    const idx = cats.findIndex(c=>c.id===id);
+    if (idx>=0) cats[idx] = {...cats[idx], nombre, icon};
+  } else {
+    cats.push({id: tipo+Date.now(), nombre, icon});
+  }
+  saveCats(tipo, cats);
+  renderCatalogoCats();
+  toast(id ? 'Categoría actualizada' : 'Categoría agregada', 'success');
+}
+
+function eliminarCategoria(tipo, id) {
+  if (!confirm('¿Eliminar esta categoría?')) return;
+  const cats = getCats(tipo).filter(c=>c.id!==id);
+  saveCats(tipo, cats);
+  renderCatalogoCats();
+  toast('Categoría eliminada', 'success');
+}
+
+/* ─── Catálogo de Equipos (para Egresos > Compra de equipos) ─── */
+function getEquipos() { return DB.get('equipos', []); }
+function saveEquipos(list) { DB.set('equipos', list); }
+
+function renderListEquipos() {
+  const el = document.getElementById('listEquipos');
+  if (!el) return;
+  const equipos = getEquipos();
+  el.innerHTML = equipos.length ? equipos.map(e=>`
+    <div style="display:flex;align-items:center;gap:.7rem;padding:.55rem .8rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:.4rem;">
+      <span style="font-size:1.2rem;">🛠️</span>
+      <span style="flex:1;font-size:.88rem;font-weight:500;">${e.nombre}${e.precio?` — $${Number(e.precio).toLocaleString('es-MX')}`:''}</span>
+      <button data-id="${e.id}" data-accion="editar" onclick="handleEquipoBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--text-light);">✏️</button>
+      <button data-id="${e.id}" data-accion="eliminar" onclick="handleEquipoBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>
+    </div>`).join('') : `<div style="font-size:.83rem;color:var(--text-light);padding:.5rem;">Sin equipos registrados.</div>`;
+}
+
+function handleEquipoBtn(btn) {
+  const id = btn.dataset.id, accion = btn.dataset.accion;
+  if (accion === 'editar') abrirFormEquipo(id);
+  else if (accion === 'eliminar') eliminarEquipo(id);
+}
+
+function abrirFormEquipo(id=null) {
+  const equipos = getEquipos();
+  const eq = id ? equipos.find(e=>e.id===id) : null;
+  const prev = document.getElementById('equipoInlineForm');
+  if (prev) prev.remove();
+  const listEl = document.getElementById('listEquipos');
+  if (!listEl) return;
+  const form = document.createElement('div');
+  form.id = 'equipoInlineForm';
+  form.style.cssText = `background:#fff;border:2px solid #B45309;border-radius:8px;padding:1rem;margin-bottom:.8rem;`;
+  form.innerHTML = `
+    <div style="font-family:var(--font-cond);font-size:.8rem;font-weight:700;letter-spacing:1px;color:#B45309;margin-bottom:.7rem;">
+      ${id ? 'EDITAR' : 'NUEVO'} EQUIPO
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+      <input id="equipoInlineNombre" type="text" placeholder="Nombre del equipo (ej. Caminadora)"
+        value="${eq?.nombre||''}"
+        style="flex:1;min-width:160px;border:1px solid var(--border);border-radius:6px;padding:.45rem .7rem;font-size:.88rem;font-family:var(--font-body);"/>
+      <input id="equipoInlinePrecio" type="number" placeholder="Precio ref. (opcional)"
+        value="${eq?.precio||''}"
+        style="width:150px;border:1px solid var(--border);border-radius:6px;padding:.45rem .7rem;font-size:.88rem;font-family:var(--font-body);"/>
+      <button onclick="guardarEquipoInline('${id||''}')"
+        style="background:#B45309;color:#fff;border:none;border-radius:6px;padding:.45rem 1rem;font-family:var(--font-cond);font-size:.82rem;font-weight:700;letter-spacing:1px;cursor:pointer;">
+        GUARDAR
+      </button>
+      <button onclick="document.getElementById('equipoInlineForm').remove()"
+        style="background:transparent;color:var(--text-light);border:1px solid var(--border);border-radius:6px;padding:.45rem .8rem;font-family:var(--font-cond);font-size:.82rem;cursor:pointer;">
+        CANCELAR
+      </button>
+    </div>`;
+  listEl.insertBefore(form, listEl.firstChild);
+  document.getElementById('equipoInlineNombre').focus();
+}
+
+function guardarEquipoInline(id) {
+  const nombre = document.getElementById('equipoInlineNombre')?.value.trim();
+  const precio = Number(document.getElementById('equipoInlinePrecio')?.value||0);
+  if (!nombre) { document.getElementById('equipoInlineNombre').focus(); return; }
+  const equipos = getEquipos();
+  if (id) {
+    const idx = equipos.findIndex(e=>e.id===id);
+    if (idx>=0) equipos[idx] = {...equipos[idx], nombre, precio};
+  } else {
+    equipos.push({id:'equipo'+Date.now(), nombre, precio});
+  }
+  saveEquipos(equipos);
+  document.getElementById('equipoInlineForm')?.remove();
+  renderListEquipos();
+  syncGoogleSheets(true);
+  toast(id ? 'Equipo actualizado' : 'Equipo agregado', 'success');
+}
+
+function eliminarEquipo(id) {
+  if (!confirm('¿Eliminar este equipo?')) return;
+  saveEquipos(getEquipos().filter(e=>e.id!==id));
+  renderListEquipos();
+  toast('Equipo eliminado', 'success');
+}
+
+
+function actualizarSelectsCategorias() {
+  // Select categoría producto
+  const selProd = document.getElementById('prodCategoria');
+  if (selProd) {
+    const cur = selProd.value;
+    selProd.innerHTML = getCats('prod').map(c=>`<option value="${c.id}">${c.icon} ${c.nombre}</option>`).join('');
+    if ([...selProd.options].some(o=>o.value===cur)) selProd.value = cur;
+  }
+  // Select categoría venta
+  const selVenta = document.getElementById('ventaCategoriaIng');
+  if (selVenta) {
+    const cur = selVenta.value;
+    selVenta.innerHTML = getCats('ing').map(c=>`<option value="${c.id}">${c.icon} ${c.nombre}</option>`).join('');
+    if ([...selVenta.options].some(o=>o.value===cur)) selVenta.value = cur;
+  }
+  // Select categoría egreso
+  const selEgr = document.getElementById('egresoCategoria');
+  if (selEgr) {
+    const cur = selEgr.value;
+    selEgr.innerHTML = getCats('egr').map(c=>`<option value="${c.id}">${c.icon} ${c.nombre}</option>`).join('');
+    if ([...selEgr.options].some(o=>o.value===cur)) selEgr.value = cur;
+  }
 }
 
 function guardarFinanzasFlag(activo) {
@@ -5293,17 +5765,22 @@ async function syncRecord(action, data) {
 async function syncGoogleSheets(silencioso=false) {
   const cfg    = DB.get('config',{gasUrl:''});
   const gasUrl = cfg.gasUrl || GAS_URL;
-  console.log('syncGoogleSheets gasUrl:', gasUrl);
   if (!gasUrl) {
     if (!silencioso) toast('Sin URL de Apps Script configurada','warning');
     return;
   }
+  const members  = DB.get('members',[]);
+  const payments = DB.get('payments',[]);
+
+  // ── PROTECCIÓN: no subir si localStorage está casi vacío ──
+  if (members.length < 3 && payments.length < 3) {
+    if (!silencioso) toast('⚠ Pocos datos locales — sincronización cancelada por seguridad. Usa Restaurar desde Sheets primero.','warning');
+    console.warn('Sync cancelado: localStorage con pocos datos', members.length, payments.length);
+    return;
+  }
   if (!silencioso) toast('Sincronizando...','');
-  const members      = DB.get('members',[]);
-  const payments     = DB.get('payments',[]);
   const attendance   = DB.get('attendance',[]);
   const instructores = DB.get('instructores',[]);
-  // Limpiar horas antes de subir a Sheets
   const horarios = DB.get('horarios',[]).map(h => ({
     ...h,
     horaInicio: limpiarHora(h.horaInicio),
@@ -5318,6 +5795,7 @@ async function syncGoogleSheets(silencioso=false) {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ action:'syncAll', data:{ members, payments, attendance, horarios, instructores,
         productos: DB.get('productos',[]), movimientos: DB.get('movimientos',[]),
+        cats_prod: DB.get('cats_prod', null), cats_ing: DB.get('cats_ing', null), cats_egr: DB.get('cats_egr', null),
         config: DB.get('config',{}) } })
     });
     const d = await r.json();
@@ -5364,6 +5842,9 @@ async function restaurarDesdeSheets() {
     if (d.instructores)DB.set('instructores',d.instructores);
     if (d.productos)   DB.set('productos',   d.productos);
     if (d.movimientos) DB.set('movimientos', d.movimientos);
+    if (d.cats_prod)   DB.set('cats_prod',   d.cats_prod);
+    if (d.cats_ing)    DB.set('cats_ing',    d.cats_ing);
+    if (d.cats_egr)    DB.set('cats_egr',    d.cats_egr);
     if (d.config)      DB.set('config',      d.config);
     toast('✔ Datos restaurados desde Google Sheets','success');
     setTimeout(() => location.reload(), 1200);
@@ -7345,6 +7826,8 @@ function ejecutarLimpiarDatos() {
         </div>
       </div>
     </div>
+
+
 
 </body>
 </html>
