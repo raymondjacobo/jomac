@@ -4896,8 +4896,36 @@ function renderCreditos() {
       <td>${c.concepto}</td>
       <td style="font-family:var(--font-display);color:#B45309;">$${Number(c.monto||0).toLocaleString('es-MX')}</td>
       <td><span class="badge badge-yellow">PENDIENTE</span></td>
-      <td><button class="btn-primary" style="padding:.3rem .8rem;font-size:.72rem;width:auto;background:#16A34A;border-color:#16A34A;" onclick="pagarCredito('${c.id}')">💰 REGISTRAR PAGO</button></td>
+      <td>
+        <button class="btn-primary" style="padding:.3rem .8rem;font-size:.72rem;width:auto;background:#16A34A;border-color:#16A34A;" onclick="pagarCredito('${c.id}')">💰 REGISTRAR PAGO</button>
+        <button class="btn-secondary" style="padding:.3rem .6rem;font-size:.72rem;width:auto;color:#DC2626;border-color:#FECACA;" onclick="eliminarCredito('${c.id}')" title="Eliminar (venta registrada mal)">🗑️</button>
+      </td>
     </tr>`).join('');
+}
+
+function eliminarCredito(id) {
+  const creditos = DB.get('creditos', []);
+  const c = creditos.find(x=>x.id===id);
+  if (!c) return;
+  if (!confirm(`¿Eliminar este crédito de ${c.miembroNombre} por $${Number(c.monto).toLocaleString('es-MX')}?\nEl producto regresará al inventario.`)) return;
+
+  // Devolver stock
+  const productos = DB.get('productos', []);
+  const pidx = productos.findIndex(p=>p.id===c.productoId);
+  if (pidx>=0) {
+    productos[pidx].stock = Number(productos[pidx].stock||0) + Number(c.cantidad||0);
+    DB.set('productos', productos);
+  }
+
+  DB.set('creditos', creditos.filter(x=>x.id!==id));
+
+  renderCreditos();
+  renderInventario();
+  if (typeof viewMiembro === 'function' && document.getElementById('modalVerMiembro')?.classList.contains('open')) {
+    viewMiembro(c.miembroId);
+  }
+  syncGoogleSheets(true);
+  toast('Crédito eliminado y stock devuelto', 'success');
 }
 
 function pagarCredito(id) {
@@ -4956,6 +4984,7 @@ function creditosDeMiembroHTML(miembroId) {
           <div style="display:flex;align-items:center;gap:.6rem;">
             <span style="font-family:var(--font-display);color:#B45309;">$${Number(c.monto).toLocaleString('es-MX')}</span>
             <button class="btn-primary" style="padding:.25rem .6rem;font-size:.68rem;width:auto;background:#16A34A;border-color:#16A34A;" onclick="pagarCredito('${c.id}')">PAGAR</button>
+            <button class="btn-secondary" style="padding:.25rem .5rem;font-size:.68rem;width:auto;color:#DC2626;border-color:#FECACA;" onclick="eliminarCredito('${c.id}')" title="Eliminar">🗑️</button>
           </div>
         </div>`).join('')}
     </div>`;
