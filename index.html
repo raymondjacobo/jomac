@@ -2677,7 +2677,7 @@ function loadDashboard() {
       kpiVentasCard.style.display = '';
       const movimientos = DB.get('movimientos', []);
       const ventasMes = movimientos
-        .filter(mv => mv.tipo === 'ingreso' && mv.categoria === 'ventas' && limpiarFecha(mv.fecha).substring(0,7) === thisMonth)
+        .filter(mv => mv.tipo === 'ingreso' && limpiarFecha(mv.fecha).substring(0,7) === thisMonth)
         .reduce((s,mv) => s + Number(mv.monto||0), 0);
       const elVentas = document.getElementById('kpiVentasMes');
       if (elVentas) elVentas.textContent = '$'+ventasMes.toLocaleString('es-MX');
@@ -4835,6 +4835,14 @@ function eliminarProducto(id) {
 }
 
 // ── CAJA ──
+function nombreCategoriaMov(categoriaId, tipo) {
+  if (!categoriaId) return '—';
+  if (categoriaId === 'ventas') return 'Ventas'; // compatibilidad con movimientos antiguos
+  const cats = getCats(tipo === 'ingreso' ? 'ing' : 'egr');
+  const cat = cats.find(c => c.id === categoriaId);
+  return cat ? `${cat.icon} ${cat.nombre}` : categoriaId;
+}
+
 function renderCaja() {
   const fecha = document.getElementById('cajaFecha')?.value || fmtDate(new Date());
   const titulo = document.getElementById('cajaTitleFecha');
@@ -4877,7 +4885,7 @@ function renderCaja() {
     <td style="font-size:.82rem;color:var(--text-light);">${formatDateNice(m.fecha)}</td>
     <td><span style="background:${m.tipo==='ingreso'?'#DCFCE7':'#FEE2E2'};color:${m.tipo==='ingreso'?'#16A34A':'#DC2626'};border-radius:4px;padding:.15rem .5rem;font-size:.75rem;">${m.tipo==='ingreso'?'INGRESO':'EGRESO'}</span></td>
     <td>${m.concepto||'—'}</td>
-    <td style="font-size:.78rem;color:var(--text-light);">${m.categoria||'—'}</td>
+    <td style="font-size:.78rem;color:var(--text-light);">${nombreCategoriaMov(m.categoria, m.tipo)}</td>
     <td style="font-family:var(--font-display);color:${m.tipo==='ingreso'?'#16A34A':'#DC2626'};">$${Number(m.monto||0).toLocaleString('es-MX')}</td>
     <td style="font-size:.8rem;">${m.metodo||'—'}</td>
     <td><button onclick="eliminarMovimiento('${m.id}')" style="background:transparent;border:1px solid #FECACA;border-radius:4px;color:var(--red);cursor:pointer;padding:.25rem .4rem;font-size:.75rem;">🗑</button></td>
@@ -4955,11 +4963,12 @@ function guardarVenta() {
   }
 
   const prod = productos.find(p=>p.id===prodId);
+  const categoriaVenta = document.getElementById('ventaCategoriaIng')?.value || '';
   const mov = {
     id: 'M'+Date.now(),
     tipo: 'ingreso',
     concepto: `Venta: ${prod?.nombre||'Producto'} x${cant}`,
-    categoria: 'ventas',
+    categoria: categoriaVenta,
     productoId: prodId,
     cantidad: cant,
     monto: total,
@@ -5154,7 +5163,7 @@ function renderReporteFinanciero() {
     <div class="table-wrap">
       <div class="table-header"><div class="table-title">EGRESOS POR CATEGORÍA</div></div>
       <table><thead><tr><th>CATEGORÍA</th><th>MONTO</th></tr></thead>
-      <tbody>${Object.entries(catEgresos).length ? Object.entries(catEgresos).map(([k,v])=>`<tr><td>${k.replace(/_/g,' ')}</td><td style="font-family:var(--font-display);color:#DC2626;">$${v.toLocaleString('es-MX')}</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:center;color:var(--text-light);">Sin egresos</td></tr>'}
+      <tbody>${Object.entries(catEgresos).length ? Object.entries(catEgresos).map(([k,v])=>`<tr><td>${nombreCategoriaMov(k,'egreso')}</td><td style="font-family:var(--font-display);color:#DC2626;">$${v.toLocaleString('es-MX')}</td></tr>`).join('') : '<tr><td colspan="2" style="text-align:center;color:var(--text-light);">Sin egresos</td></tr>'}
       ${Object.keys(catEgresos).length?`<tr style="border-top:2px solid var(--border);font-weight:700;"><td>TOTAL</td><td style="font-family:var(--font-display);color:#DC2626;">$${egresos.toLocaleString('es-MX')}</td></tr>`:''}
       </tbody></table>
     </div>
