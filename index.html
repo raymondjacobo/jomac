@@ -1773,9 +1773,13 @@
         <input type="checkbox" id="ventaCredito" onchange="toggleVentaCredito()" style="width:auto;"/>
         <span>🔴 VENTA A CRÉDITO (pendiente de pago)</span>
       </label>
-      <div id="ventaCreditoMiembroWrap" style="display:none;margin-top:.6rem;">
+      <div id="ventaCreditoMiembroWrap" style="display:none;margin-top:.6rem;position:relative;">
         <label>ASIGNAR A MIEMBRO</label>
-        <select id="ventaCreditoMiembro"></select>
+        <input type="text" id="ventaCreditoMiembroBusqueda" placeholder="🔍 Buscar por nombre..." autocomplete="off"
+          oninput="filtrarMiembrosCredito()" onfocus="filtrarMiembrosCredito()"
+          onblur="setTimeout(()=>{const r=document.getElementById('ventaCreditoMiembroResultados'); if(r) r.style.display='none';},150)"/>
+        <input type="hidden" id="ventaCreditoMiembro"/>
+        <div id="ventaCreditoMiembroResultados" style="display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;z-index:50;margin-top:2px;"></div>
       </div>
     </div>
     <div class="field-group"><label>FECHA</label><input type="date" id="ventaFecha"/></div>
@@ -5057,14 +5061,40 @@ function abrirModalVenta() {
   document.getElementById('ventaFecha').value = fmtDate(new Date());
   document.getElementById('ventaNotas').value = '';
   document.getElementById('ventaCredito').checked = false;
-  const miembroSel = document.getElementById('ventaCreditoMiembro');
-  if (miembroSel) {
-    const members = DB.get('members',[]).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
-    miembroSel.innerHTML = '<option value="">-- Seleccionar miembro --</option>' +
-      members.map(m=>`<option value="${m.id}">${m.nombre}</option>`).join('');
-  }
+  const busq = document.getElementById('ventaCreditoMiembroBusqueda');
+  const hid  = document.getElementById('ventaCreditoMiembro');
+  if (busq) busq.value = '';
+  if (hid) hid.value = '';
+  const resWrap = document.getElementById('ventaCreditoMiembroResultados');
+  if (resWrap) resWrap.style.display = 'none';
   toggleVentaCredito();
   openModal('modalVenta');
+}
+
+function filtrarMiembrosCredito() {
+  const q = (document.getElementById('ventaCreditoMiembroBusqueda')?.value||'').trim().toLowerCase();
+  const resWrap = document.getElementById('ventaCreditoMiembroResultados');
+  if (!resWrap) return;
+  const members = DB.get('members',[]).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const filtrados = (q ? members.filter(m=>m.nombre.toLowerCase().includes(q)) : members).slice(0,8);
+  if (!filtrados.length) {
+    resWrap.innerHTML = `<div style="padding:.6rem .8rem;font-size:.83rem;color:var(--text-light);">Sin resultados</div>`;
+  } else {
+    resWrap.innerHTML = filtrados.map(m=>`
+      <div onmousedown="seleccionarMiembroCredito('${m.id}','${m.nombre.replace(/'/g,"\\'")}')"
+        style="padding:.55rem .8rem;font-size:.85rem;cursor:pointer;border-bottom:1px solid var(--border);"
+        onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='#fff'">
+        ${m.nombre}
+      </div>`).join('');
+  }
+  resWrap.style.display = 'block';
+}
+
+function seleccionarMiembroCredito(id, nombre) {
+  document.getElementById('ventaCreditoMiembro').value = id;
+  document.getElementById('ventaCreditoMiembroBusqueda').value = nombre;
+  const resWrap = document.getElementById('ventaCreditoMiembroResultados');
+  if (resWrap) resWrap.style.display = 'none';
 }
 
 function toggleVentaCredito() {
