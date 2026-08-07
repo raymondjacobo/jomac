@@ -5938,8 +5938,8 @@ function doCheckinFromProfile(forzar, horarioIdElegido) {
 // ════════════════════════════════════
 function loadConfig() {
   const raw = DB.get('config', {});
-  // Siempre aplicar defaults si faltan valores
-  const cfg = {
+  // Aplicar defaults solo a los campos de precios/admin — preservar el resto (ej. finanzasActivo)
+  const cfg = { ...raw,
     preciodia:    raw.preciodia    || 50,
     preciosemana: raw.preciosemana || 200,
     preciomes:    raw.preciomes    || 500,
@@ -5960,15 +5960,14 @@ function loadConfig() {
 }
 
 function saveConfig() {
-  const cfg = {
-    preciodia:    Number(document.getElementById('preciodia').value)||50,
-    preciosemana: Number(document.getElementById('preciosemana').value)||200,
-    preciomes:    Number(document.getElementById('preciomes').value)||500,
-    precioanual:  Number(document.getElementById('precioanual').value)||5000,
-    gasUrl:       document.getElementById('gasUrl').value.trim(),
-    adminUser:    document.getElementById('cfgAdminUser').value.trim()||'admin',
-    adminPass:    document.getElementById('cfgAdminPass').value.trim()||'admin123',
-  };
+  const cfg = DB.get('config', {}); // preservar campos existentes (ej. finanzasActivo)
+  cfg.preciodia    = Number(document.getElementById('preciodia').value)||50;
+  cfg.preciosemana = Number(document.getElementById('preciosemana').value)||200;
+  cfg.preciomes    = Number(document.getElementById('preciomes').value)||500;
+  cfg.precioanual  = Number(document.getElementById('precioanual').value)||5000;
+  cfg.gasUrl       = document.getElementById('gasUrl').value.trim();
+  cfg.adminUser    = document.getElementById('cfgAdminUser').value.trim()||'admin';
+  cfg.adminPass    = document.getElementById('cfgAdminPass').value.trim()||'admin123';
   DB.set('config', cfg);
   toast('Configuración guardada','success');
 }
