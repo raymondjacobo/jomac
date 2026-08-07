@@ -1573,6 +1573,20 @@
     <!-- ══════════════════════════════════════════════════════ -->
     <!-- INVENTARIO                                            -->
     <!-- ══════════════════════════════════════════════════════ -->
+    <div class="page" id="pageCreditos">
+      <div class="page-header">
+        <div><div class="page-title">💳 POR COBRAR</div><div class="page-subtitle">VENTAS A CRÉDITO PENDIENTES</div></div>
+      </div>
+      <div id="creditosKpis" class="grid-3" style="margin-bottom:1.2rem;"></div>
+      <input type="text" id="searchCreditos" placeholder="🔍 Buscar por miembro..." oninput="renderCreditos()" style="width:100%;max-width:320px;margin-bottom:1rem;border:1px solid var(--border);border-radius:8px;padding:.55rem .8rem;font-family:var(--font-body);font-size:.88rem;"/>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>FECHA</th><th>MIEMBRO</th><th>CONCEPTO</th><th>MONTO</th><th>ESTADO</th><th></th></tr></thead>
+          <tbody id="tablaCreditos"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="page" id="pageCatalogos">
       <div class="page-header"><h1>📦 CATÁLOGOS</h1></div>
 
@@ -1754,10 +1768,20 @@
         <option value="tarjeta">💳 Tarjeta</option>
       </select>
     </div>
+    <div class="field-group" style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:.7rem .9rem;">
+      <label style="display:flex;align-items:center;gap:.5rem;margin:0;cursor:pointer;">
+        <input type="checkbox" id="ventaCredito" onchange="toggleVentaCredito()" style="width:auto;"/>
+        <span>🔴 VENTA A CRÉDITO (pendiente de pago)</span>
+      </label>
+      <div id="ventaCreditoMiembroWrap" style="display:none;margin-top:.6rem;">
+        <label>ASIGNAR A MIEMBRO</label>
+        <select id="ventaCreditoMiembro"></select>
+      </div>
+    </div>
     <div class="field-group"><label>FECHA</label><input type="date" id="ventaFecha"/></div>
     <div class="field-group"><label>NOTAS</label><input type="text" id="ventaNotas" placeholder="Opcional"/></div>
     <div style="display:flex;gap:.8rem;margin-top:1rem;">
-      <button class="btn-primary" onclick="guardarVenta()" style="flex:1;background:#16A34A;border-color:#16A34A;">REGISTRAR VENTA</button>
+      <button class="btn-primary" id="btnGuardarVenta" onclick="guardarVenta()" style="flex:1;background:#16A34A;border-color:#16A34A;">REGISTRAR VENTA</button>
       <button class="btn-secondary" onclick="closeModal('modalVenta')" style="flex:1;">CANCELAR</button>
     </div>
   </div>
@@ -2308,6 +2332,7 @@ async function restaurarAlIniciar() {
       if (d.cats_egr)     DB.set('cats_egr',      d.cats_egr);
       if (d.equipos)      DB.set('equipos',       d.equipos);
       if (d.catEgrItems)  DB.set('catEgrItems',   d.catEgrItems);
+      if (d.creditos)     DB.set('creditos',      d.creditos);
       if (d.config)       DB.set('config',        d.config);
       if (loginBrand) {
         loginBrand.style.color = '#7FFF00';
@@ -2472,6 +2497,7 @@ const ADMIN_NAV = [
   { id:'inventario',   label:'Inventario',      icon:'📦', page:'pageInventario' },
   { id:'caja',         label:'Caja',            icon:'💰', page:'pageCaja' },
   { id:'reporteFinanciero', label:'Rep. Financiero', icon:'📉', page:'pageReporteFinanciero' },
+  { id:'creditos',    label:'Por Cobrar',      icon:'💳', page:'pageCreditos' },
   { id:'catalogos',    label:'Catálogos',       icon:'🗂️', page:'pageCatalogos' },
   { section: 'SISTEMA' },
   { id:'config',     label:'Configuración', icon:'⚙️', page:'pageConfig' },
@@ -2494,6 +2520,7 @@ const INSTRUCTOR_NAV = [
   { id:'inventario',   label:'Inventario',      icon:'📦', page:'pageInventario' },
   { id:'caja',         label:'Caja',            icon:'💰', page:'pageCaja' },
   { id:'reporteFinanciero', label:'Rep. Financiero', icon:'📉', page:'pageReporteFinanciero' },
+  { id:'creditos',    label:'Por Cobrar',      icon:'💳', page:'pageCreditos' },
   { id:'catalogos',    label:'Catálogos',       icon:'🗂️', page:'pageCatalogos' },
 ];
 
@@ -2562,7 +2589,7 @@ function buildNav() {
       const skipSeccion = (item.section === 'FINANZAS' && !finanzasActivo);
       if (!skipSeccion) el.innerHTML += `<div class="nav-section">${item.section}</div>`;
     } else {
-      const esFinanzas = ['inventario','caja','reporteFinanciero','catalogos'].includes(item.id);
+      const esFinanzas = ['inventario','caja','reporteFinanciero','catalogos','creditos'].includes(item.id);
       if (esFinanzas && !finanzasActivo) return;
       el.innerHTML += `<div class="nav-item" id="nav_${item.id}" onclick="navigateTo('${item.id}')">
         <span class="nav-icon">${item.icon}</span>${item.label}
@@ -2601,6 +2628,7 @@ function navigateTo(id) {
   if (id==='cumpleanios') loadCumpleanios();
   if (id==='config')     { loadConfig(); verInfoBackup(); actualizarToggleFinanzas(DB.get('config',{}).finanzasActivo === true || DB.get('config',{}).finanzasActivo === 'true'); }
   if (id==='catalogos')  { renderCatalogoCats(); }
+  if (id==='creditos')   { renderCreditos(); }
 }
 
 function logout() {
@@ -3180,10 +3208,11 @@ function renderMiembros() {
     const diff  = vence ? Math.ceil((new Date(limpiarFecha(vence)+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24)) : null;
     const estado = !pago ? 'badge-gray' : diff < 0 ? 'badge-red' : diff <= 3 ? 'badge-yellow' : 'badge-green';
     const est    = !pago ? 'SIN PLAN' : diff < 0 ? 'VENCIDO' : 'ACTIVO';
+    const debeCredito = getCreditosPendientes(m.id).reduce((s,c)=>s+Number(c.monto||0),0);
     return `<tr>
       <td><div style="display:flex;align-items:center;gap:.7rem;">
         <div class="member-avatar">${m.nombre[0]}</div>
-        <div><div style="font-weight:600">${m.nombre}</div>
+        <div><div style="font-weight:600">${m.nombre}${debeCredito>0?` <span style="background:#FEF3C7;color:#92400E;border-radius:4px;padding:.1rem .4rem;font-size:.68rem;font-weight:700;">DEBE $${debeCredito.toLocaleString('es-MX')}</span>`:''}</div>
           <div style="font-size:.72rem;color:var(--text-light);">${m.email||''}</div></div>
       </div></td>
       <td><code style="background:var(--bg);padding:2px 7px;border-radius:2px;font-size:.85rem;">${m.pin}</code></td>
@@ -3558,6 +3587,7 @@ function viewMiembro(id) {
       <div class="kpi-card"><div class="kpi-label">REGISTRADO</div><div class="kpi-value" style="font-size:1rem;">${formatDateNice(m.fechaReg)}</div></div>
     </div>
     ${m.horarioId ? `<div class="alert alert-info" style="margin-bottom:.8rem;">🕐 Horario: <strong>${horarioNombreById(m.horarioId)}</strong></div>` : ''}
+    ${creditosDeMiembroHTML(id)}
     ${m.notas ? `<div class="alert alert-info">${m.notas}</div>` : ''}
     <div class="modal-title" style="font-size:1rem;letter-spacing:2px;margin-bottom:.8rem;">ÚLTIMAS ASISTENCIAS</div>
     <div style="background:var(--bg);border-radius:2px;overflow:hidden;">
@@ -4835,6 +4865,98 @@ function eliminarProducto(id) {
 }
 
 // ── CAJA ──
+/* ─── Créditos (ventas pendientes de pago) ─── */
+function getCreditosPendientes(miembroId=null) {
+  const cr = DB.get('creditos', []).filter(c=>c.estado==='pendiente');
+  return miembroId ? cr.filter(c=>c.miembroId===miembroId) : cr;
+}
+
+function renderCreditos() {
+  const q = (document.getElementById('searchCreditos')?.value||'').toLowerCase();
+  const pendientes = getCreditosPendientes().filter(c => !q || c.miembroNombre.toLowerCase().includes(q));
+  const totalPend = pendientes.reduce((s,c)=>s+Number(c.monto||0),0);
+
+  const kpis = document.getElementById('creditosKpis');
+  if (kpis) kpis.innerHTML = `
+    <div class="kpi-card yellow"><div class="kpi-label">TOTAL POR COBRAR</div><div class="kpi-value">$${totalPend.toLocaleString('es-MX')}</div></div>
+    <div class="kpi-card"><div class="kpi-label">CRÉDITOS PENDIENTES</div><div class="kpi-value">${pendientes.length}</div></div>
+  `;
+
+  const tbody = document.getElementById('tablaCreditos');
+  if (!tbody) return;
+  if (!pendientes.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="no-data">🎉 Sin créditos pendientes</div></td></tr>`; return; }
+  tbody.innerHTML = pendientes.slice().sort((a,b)=>a.fecha<b.fecha?1:-1).map(c=>`
+    <tr>
+      <td style="font-size:.82rem;color:var(--text-light);">${formatDateNice(c.fecha)}</td>
+      <td style="font-weight:600;">${c.miembroNombre}</td>
+      <td>${c.concepto}</td>
+      <td style="font-family:var(--font-display);color:#B45309;">$${Number(c.monto||0).toLocaleString('es-MX')}</td>
+      <td><span class="badge badge-yellow">PENDIENTE</span></td>
+      <td><button class="btn-primary" style="padding:.3rem .8rem;font-size:.72rem;width:auto;background:#16A34A;border-color:#16A34A;" onclick="pagarCredito('${c.id}')">💰 REGISTRAR PAGO</button></td>
+    </tr>`).join('');
+}
+
+function pagarCredito(id) {
+  const creditos = DB.get('creditos', []);
+  const idx = creditos.findIndex(c=>c.id===id);
+  if (idx<0) return;
+  const c = creditos[idx];
+  if (!confirm(`¿Confirmar pago de $${Number(c.monto).toLocaleString('es-MX')} de ${c.miembroNombre}?`)) return;
+
+  const fechaPago = fmtDate(new Date());
+  c.estado = 'pagado';
+  c.fechaPago = fechaPago;
+  DB.set('creditos', creditos);
+
+  // Al pagarse, ahora sí se registra como ingreso real, con fecha del día de pago
+  const mov = {
+    id: 'M'+Date.now(),
+    tipo: 'ingreso',
+    concepto: c.concepto + ' (crédito pagado)',
+    categoria: c.categoria,
+    productoId: c.productoId,
+    cantidad: c.cantidad,
+    monto: c.monto,
+    metodo: c.metodo||'efectivo',
+    fecha: fechaPago,
+    notas: c.notas ? c.notas + ' · Venta original: '+formatDateNice(c.fecha) : 'Venta original: '+formatDateNice(c.fecha)
+  };
+  const movimientos = DB.get('movimientos', []);
+  movimientos.push(mov);
+  DB.set('movimientos', movimientos);
+
+  renderCreditos();
+  renderCaja();
+  if (typeof viewMiembro === 'function' && document.getElementById('modalVerMiembro')?.classList.contains('open')) {
+    viewMiembro(c.miembroId);
+  }
+  syncGoogleSheets(true);
+  toast('Pago registrado — ya cuenta como ingreso', 'success');
+}
+
+function creditosDeMiembroHTML(miembroId) {
+  const pend = getCreditosPendientes(miembroId);
+  if (!pend.length) return '';
+  const total = pend.reduce((s,c)=>s+Number(c.monto||0),0);
+  return `
+    <div class="alert" style="background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;margin-bottom:.8rem;">
+      🔴 <strong>Debe $${total.toLocaleString('es-MX')}</strong> en ${pend.length} crédito${pend.length>1?'s':''} pendiente${pend.length>1?'s':''}
+    </div>
+    <div style="background:var(--bg);border-radius:8px;overflow:hidden;margin-bottom:1rem;">
+      ${pend.map(c=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;border-bottom:1px solid var(--border);gap:.6rem;">
+          <div>
+            <div style="font-size:.85rem;">${c.concepto}</div>
+            <div style="font-size:.72rem;color:var(--text-light);">${formatDateNice(c.fecha)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.6rem;">
+            <span style="font-family:var(--font-display);color:#B45309;">$${Number(c.monto).toLocaleString('es-MX')}</span>
+            <button class="btn-primary" style="padding:.25rem .6rem;font-size:.68rem;width:auto;background:#16A34A;border-color:#16A34A;" onclick="pagarCredito('${c.id}')">PAGAR</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
 function nombreCategoriaMov(categoriaId, tipo) {
   if (!categoriaId) return '—';
   if (categoriaId === 'ventas') return 'Ventas'; // compatibilidad con movimientos antiguos
@@ -4934,7 +5056,27 @@ function abrirModalVenta() {
   document.getElementById('ventaMetodo').value = 'efectivo';
   document.getElementById('ventaFecha').value = fmtDate(new Date());
   document.getElementById('ventaNotas').value = '';
+  document.getElementById('ventaCredito').checked = false;
+  const miembroSel = document.getElementById('ventaCreditoMiembro');
+  if (miembroSel) {
+    const members = DB.get('members',[]).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+    miembroSel.innerHTML = '<option value="">-- Seleccionar miembro --</option>' +
+      members.map(m=>`<option value="${m.id}">${m.nombre}</option>`).join('');
+  }
+  toggleVentaCredito();
   openModal('modalVenta');
+}
+
+function toggleVentaCredito() {
+  const credito = document.getElementById('ventaCredito')?.checked;
+  const wrap = document.getElementById('ventaCreditoMiembroWrap');
+  const btn  = document.getElementById('btnGuardarVenta');
+  if (wrap) wrap.style.display = credito ? 'block' : 'none';
+  if (btn) {
+    btn.textContent = credito ? 'REGISTRAR CRÉDITO' : 'REGISTRAR VENTA';
+    btn.style.background = credito ? '#B45309' : '#16A34A';
+    btn.style.borderColor = credito ? '#B45309' : '#16A34A';
+  }
 }
 
 function actualizarPrecioVenta() {
@@ -4952,8 +5094,12 @@ function guardarVenta() {
   const cant   = Number(document.getElementById('ventaCantidad').value||1);
   const precio = Number(document.getElementById('ventaPrecioUnit').value||0);
   const total  = Number(document.getElementById('ventaTotal').value||0) || precio*cant;
+  const esCredito = document.getElementById('ventaCredito')?.checked;
+  const miembroId = esCredito ? document.getElementById('ventaCreditoMiembro')?.value : '';
 
-  // Descontar stock
+  if (esCredito && !miembroId) { toast('Selecciona a qué miembro se le asigna el crédito','error'); return; }
+
+  // Descontar stock (el producto sale del inventario aunque no se haya cobrado)
   const productos = DB.get('productos',[]);
   const pidx = productos.findIndex(p=>p.id===prodId);
   if (pidx>=0) {
@@ -4964,26 +5110,51 @@ function guardarVenta() {
 
   const prod = productos.find(p=>p.id===prodId);
   const categoriaVenta = document.getElementById('ventaCategoriaIng')?.value || '';
-  const mov = {
-    id: 'M'+Date.now(),
-    tipo: 'ingreso',
-    concepto: `Venta: ${prod?.nombre||'Producto'} x${cant}`,
-    categoria: categoriaVenta,
-    productoId: prodId,
-    cantidad: cant,
-    monto: total,
-    metodo: document.getElementById('ventaMetodo').value,
-    fecha: document.getElementById('ventaFecha').value,
-    notas: document.getElementById('ventaNotas').value.trim()
-  };
-  const movimientos = DB.get('movimientos',[]);
-  movimientos.push(mov);
-  DB.set('movimientos', movimientos);
-  closeModal('modalVenta');
-  renderCaja();
-  renderInventario();
-  syncGoogleSheets(true);
-  toast('Venta registrada','success');
+  const concepto = `Venta: ${prod?.nombre||'Producto'} x${cant}`;
+  const fecha = document.getElementById('ventaFecha').value;
+  const metodo = document.getElementById('ventaMetodo').value;
+  const notas = document.getElementById('ventaNotas').value.trim();
+
+  if (esCredito) {
+    const members = DB.get('members',[]);
+    const miembro = members.find(m=>m.id===miembroId);
+    const creditos = DB.get('creditos',[]);
+    creditos.push({
+      id: 'CR'+Date.now(),
+      miembroId, miembroNombre: miembro?.nombre||'—',
+      productoId: prodId, productoNombre: prod?.nombre||'Producto',
+      cantidad: cant, monto: total,
+      categoria: categoriaVenta, concepto, metodo, notas,
+      fecha, estado: 'pendiente', fechaPago: null
+    });
+    DB.set('creditos', creditos);
+    closeModal('modalVenta');
+    renderInventario();
+    if (typeof renderCreditos === 'function') renderCreditos();
+    syncGoogleSheets(true);
+    toast('Crédito registrado — pendiente de pago', 'success');
+  } else {
+    const mov = {
+      id: 'M'+Date.now(),
+      tipo: 'ingreso',
+      concepto,
+      categoria: categoriaVenta,
+      productoId: prodId,
+      cantidad: cant,
+      monto: total,
+      metodo,
+      fecha,
+      notas
+    };
+    const movimientos = DB.get('movimientos',[]);
+    movimientos.push(mov);
+    DB.set('movimientos', movimientos);
+    closeModal('modalVenta');
+    renderCaja();
+    renderInventario();
+    syncGoogleSheets(true);
+    toast('Venta registrada','success');
+  }
   if (prod && Number(prod.stock||0) <= Number(prod.stockMin||0)) {
     setTimeout(()=>toast(`⚠ Stock bajo de ${prod.nombre}`, 'warning'), 800);
   }
@@ -5810,7 +5981,7 @@ async function syncGoogleSheets(silencioso=false) {
       body: JSON.stringify({ action:'syncAll', data:{ members, payments, attendance, horarios, instructores,
         productos: DB.get('productos',[]), movimientos: DB.get('movimientos',[]),
         cats_prod: DB.get('cats_prod', null), cats_ing: DB.get('cats_ing', null), cats_egr: DB.get('cats_egr', null),
-        equipos: DB.get('equipos', []), catEgrItems: DB.get('catEgrItems', {}),
+        equipos: DB.get('equipos', []), catEgrItems: DB.get('catEgrItems', {}), creditos: DB.get('creditos', []),
         config: DB.get('config',{}) } })
     });
     const d = await r.json();
@@ -5862,6 +6033,7 @@ async function restaurarDesdeSheets() {
     if (d.cats_egr)    DB.set('cats_egr',    d.cats_egr);
     if (d.equipos)     DB.set('equipos',     d.equipos);
     if (d.catEgrItems) DB.set('catEgrItems', d.catEgrItems);
+    if (d.creditos)    DB.set('creditos',    d.creditos);
     if (d.config)      DB.set('config',      d.config);
     toast('✔ Datos restaurados desde Google Sheets','success');
     setTimeout(() => location.reload(), 1200);
