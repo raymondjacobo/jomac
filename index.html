@@ -1697,13 +1697,18 @@
             <option value="11">Noviembre</option><option value="12">Diciembre</option>
           </select>
         </div>
-        <div class="field-group" style="margin:0;min-width:100px;">
+        <div class="field-group" style="margin:0;min-width:150px;display:none;" id="rfDiaWrap">
+          <label>FECHA (CORTE DE CAJA)</label>
+          <input type="date" id="rfDia" onchange="renderReporteFinanciero()"/>
+        </div>
+        <div class="field-group" style="margin:0;min-width:100px;" id="rfAnioWrap">
           <label>AÑO</label>
           <input type="number" id="rfAnio" value="2026" min="2024" max="2030" onchange="renderReporteFinanciero()" style="width:90px;"/>
         </div>
       </div>
       <div class="kpi-grid" id="rfKpis" style="margin-bottom:1.5rem;"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;" id="rfTablas"></div>
+      <div style="display:grid;grid-template-columns:1fr;gap:1rem;margin-bottom:1.5rem;" id="rfTablas"></div>
+      <div id="rfDetalleDia"></div>
     </div>
 
   </div>
@@ -5344,14 +5349,22 @@ function renderReporteFinanciero() {
   const tipo = document.getElementById('rfTipo')?.value || 'mes';
   const mes  = document.getElementById('rfMes')?.value  || '07';
   const anio = document.getElementById('rfAnio')?.value || '2026';
-  const rfMesWrap = document.getElementById('rfMesWrap');
-  if (rfMesWrap) rfMesWrap.style.display = tipo==='anio' ? 'none' : '';
+  const diaWrap = document.getElementById('rfDiaWrap');
+  const mesWrap = document.getElementById('rfMesWrap');
+  const anioWrap = document.getElementById('rfAnioWrap');
+  const diaInput = document.getElementById('rfDia');
+  if (diaInput && !diaInput.value) diaInput.value = fmtDate(new Date());
+  const diaSel = diaInput?.value || fmtDate(new Date());
+
+  if (diaWrap)  diaWrap.style.display  = tipo==='dia' ? '' : 'none';
+  if (mesWrap)  mesWrap.style.display  = tipo==='mes' ? '' : 'none';
+  if (anioWrap) anioWrap.style.display = tipo==='dia' ? 'none' : '';
 
   const movimientos = DB.get('movimientos',[]);
   const pagos       = DB.get('payments',[]);
 
   const filtrar = (fecha) => {
-    if (tipo==='dia') return fecha === fmtDate(new Date());
+    if (tipo==='dia') return fecha === diaSel;
     if (tipo==='mes') return fecha && fecha.startsWith(anio+'-'+mes);
     return fecha && fecha.startsWith(anio);
   };
@@ -5367,6 +5380,7 @@ function renderReporteFinanciero() {
 
   const kpis = document.getElementById('rfKpis');
   if (kpis) kpis.innerHTML = `
+    ${tipo==='dia' ? `<div style="grid-column:1/-1;font-family:var(--font-cond);font-size:.85rem;letter-spacing:1px;color:var(--text-light);margin-bottom:-.3rem;">📋 CORTE DE CAJA · ${formatDateNice(diaSel)}</div>` : ''}
     <div class="kpi-card green"><div class="kpi-label">TOTAL INGRESOS</div><div class="kpi-value">$${totalIngresos.toLocaleString('es-MX')}</div></div>
     <div class="kpi-card blue"><div class="kpi-label">MENSUALIDADES</div><div class="kpi-value">$${ingresosMens.toLocaleString('es-MX')}</div></div>
     <div class="kpi-card yellow"><div class="kpi-label">VENTAS</div><div class="kpi-value">$${ingresosVentas.toLocaleString('es-MX')}</div></div>
@@ -5398,6 +5412,53 @@ function renderReporteFinanciero() {
       </tbody></table>
     </div>
   `;
+
+  // Detalle del día (corte de caja): quién pagó, qué se vendió, créditos, egresos
+  const detalleWrap = document.getElementById('rfDetalleDia');
+  if (detalleWrap) {
+    if (tipo !== 'dia') { detalleWrap.innerHTML = ''; }
+    else {
+      const creditosCobradosHoy = DB.get('creditos',[]).filter(c=>c.estado==='pagado' && c.fechaPago===diaSel);
+      const creditosNuevosHoy   = DB.get('creditos',[]).filter(c=>c.fecha===diaSel);
+      const ventasHoy = movsFiltrados.filter(m=>m.tipo==='ingreso' && !/crédito pagado/.test(m.concepto||''));
+      const egresosHoy = movsFiltrados.filter(m=>m.tipo==='egreso');
+
+      const filaHTML = (concepto, quien, monto, metodo, color) => `
+        <tr>
+          <td>${concepto}</td>
+          <td style="color:var(--text-light);">${quien}</td>
+          <td style="font-family:var(--font-display);color:${color};">$${Number(monto||0).toLocaleString('es-MX')}</td>
+          <td style="font-size:.78rem;color:var(--text-light);text-transform:capitalize;">${metodo||'—'}</td>
+        </tr>`;
+
+      let filas = '';
+      pagosFiltrados.forEach(p => filas += filaHTML(`💳 Mensualidad (${p.plan||''})`, p.memberName, p.monto, p.metodo, '#16A34A'));
+      ventasHoy.forEach(m => filas += filaHTML('🛒 '+(m.concepto||'Venta'), nombreCategoriaMov(m.categoria,'ingreso'), m.monto, m.metodo, '#16A34A'));
+      creditosCobradosHoy.forEach(c => filas += filaHTML('✅ Crédito cobrado: '+c.concepto, c.miembroNombre, c.monto, c.metodo, '#16A34A'));
+      egresosHoy.forEach(m => filas += filaHTML('💸 '+(m.concepto||'Egreso')+' · '+nombreCategoriaMov(m.categoria,'egreso'), '—', m.monto, m.metodo, '#DC2626'));
+
+      const tablaMovs = !filas ? `<div style="text-align:center;color:var(--text-light);padding:1.5rem;">Sin movimientos este día</div>` : `
+        <table><thead><tr><th>CONCEPTO</th><th>QUIÉN / CATEGORÍA</th><th>MONTO</th><th>MÉTODO</th></tr></thead>
+        <tbody>${filas}</tbody></table>`;
+
+      const pendientesHTML = creditosNuevosHoy.filter(c=>c.estado==='pendiente').length ? `
+        <div class="table-wrap" style="margin-top:1rem;border:1px solid #FDE68A;">
+          <div class="table-header"><div class="table-title" style="color:#B45309;">🔴 CRÉDITOS NUEVOS ESTE DÍA (AÚN NO CUENTAN COMO INGRESO)</div></div>
+          <table><thead><tr><th>CONCEPTO</th><th>MIEMBRO</th><th>MONTO</th></tr></thead>
+          <tbody>${creditosNuevosHoy.filter(c=>c.estado==='pendiente').map(c=>`
+            <tr><td>${c.concepto}</td><td>${c.miembroNombre}</td><td style="font-family:var(--font-display);color:#B45309;">$${Number(c.monto).toLocaleString('es-MX')}</td></tr>`).join('')}
+          </tbody></table>
+        </div>` : '';
+
+      detalleWrap.innerHTML = `
+        <div class="table-wrap">
+          <div class="table-header"><div class="table-title">📋 DETALLE DEL DÍA</div></div>
+          ${tablaMovs}
+        </div>
+        ${pendientesHTML}
+      `;
+    }
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
