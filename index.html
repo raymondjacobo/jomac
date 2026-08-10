@@ -1527,6 +1527,24 @@
       </div>
     </div>
 
+    <!-- REPORTE ORIGEN DE MIEMBROS -->
+    <div class="page" id="pageReporteOrigen">
+      <div class="page-header">
+        <div>
+          <div class="page-title">🧭 ORIGEN DE MIEMBROS</div>
+          <div class="page-subtitle">¿DE DÓNDE VIENEN NUESTROS MIEMBROS?</div>
+        </div>
+      </div>
+      <div class="kpi-grid" id="roKpis" style="margin-bottom:1.5rem;"></div>
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">🏆 TOP REFERIDORES</div></div>
+        <table>
+          <thead><tr><th>MIEMBRO</th><th>PERSONAS REFERIDAS</th></tr></thead>
+          <tbody id="roTablaReferidores"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- CREDENCIAL -->
     <div class="page" id="pageCredencial">
       <div class="page-header">
@@ -1773,19 +1791,19 @@
         <option value="tarjeta">💳 Tarjeta</option>
       </select>
     </div>
+    <div class="field-group" id="ventaMiembroLabelWrap" style="position:relative;">
+      <label id="ventaMiembroLabel">MIEMBRO (OPCIONAL — para su historial de compras)</label>
+      <input type="text" id="ventaMiembroBusqueda" placeholder="🔍 Buscar por nombre..." autocomplete="off"
+        oninput="filtrarMiembrosVenta()" onfocus="filtrarMiembrosVenta()"
+        onblur="setTimeout(()=>{const r=document.getElementById('ventaMiembroResultados'); if(r) r.style.display='none';},150)"/>
+      <input type="hidden" id="ventaMiembro"/>
+      <div id="ventaMiembroResultados" style="display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;z-index:50;margin-top:2px;"></div>
+    </div>
     <div class="field-group" style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:.7rem .9rem;">
       <label style="display:flex;align-items:center;gap:.5rem;margin:0;cursor:pointer;">
         <input type="checkbox" id="ventaCredito" onchange="toggleVentaCredito()" style="width:auto;"/>
-        <span>🔴 VENTA A CRÉDITO (pendiente de pago)</span>
+        <span>🔴 VENTA A CRÉDITO (pendiente de pago — requiere miembro)</span>
       </label>
-      <div id="ventaCreditoMiembroWrap" style="display:none;margin-top:.6rem;position:relative;">
-        <label>ASIGNAR A MIEMBRO</label>
-        <input type="text" id="ventaCreditoMiembroBusqueda" placeholder="🔍 Buscar por nombre..." autocomplete="off"
-          oninput="filtrarMiembrosCredito()" onfocus="filtrarMiembrosCredito()"
-          onblur="setTimeout(()=>{const r=document.getElementById('ventaCreditoMiembroResultados'); if(r) r.style.display='none';},150)"/>
-        <input type="hidden" id="ventaCreditoMiembro"/>
-        <div id="ventaCreditoMiembroResultados" style="display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;z-index:50;margin-top:2px;"></div>
-      </div>
     </div>
     <div class="field-group"><label>FECHA</label><input type="date" id="ventaFecha"/></div>
     <div class="field-group"><label>NOTAS</label><input type="text" id="ventaNotas" placeholder="Opcional"/></div>
@@ -1900,6 +1918,31 @@
     <div class="field-group">
       <label>NOTAS</label>
       <textarea id="mnNotas" placeholder="Objetivo, observaciones..."></textarea>
+    </div>
+
+    <div class="field-group">
+      <label>¿CÓMO SE ENTERÓ DE NOSOTROS?</label>
+      <select id="mnOrigen" onchange="toggleOrigenReferido()">
+        <option value="">— No especificado —</option>
+        <option value="recomendacion">👥 Recomendación de un miembro</option>
+        <option value="redes">📱 Redes sociales</option>
+        <option value="google">🔍 Google / Internet</option>
+        <option value="publicidad">📰 Publicidad / Volante</option>
+        <option value="caminando">🚶 Pasó caminando / Vio el local</option>
+        <option value="otro">✏️ Otro</option>
+      </select>
+    </div>
+    <div class="field-group" id="mnOrigenDetalleWrap" style="display:none;">
+      <label id="mnOrigenDetalleLabel">DETALLE</label>
+      <input type="text" id="mnOrigenDetalle" placeholder="Ej. Facebook, Instagram..."/>
+    </div>
+    <div class="field-group" id="mnReferidoWrap" style="display:none;position:relative;">
+      <label>¿QUIÉN LO RECOMENDÓ?</label>
+      <input type="text" id="mnReferidoBusqueda" placeholder="🔍 Buscar miembro..." autocomplete="off"
+        oninput="filtrarMiembrosReferido()" onfocus="filtrarMiembrosReferido()"
+        onblur="setTimeout(()=>{const r=document.getElementById('mnReferidoResultados'); if(r) r.style.display='none';},150)"/>
+      <input type="hidden" id="mnReferidoId"/>
+      <div id="mnReferidoResultados" style="display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;z-index:50;margin-top:2px;"></div>
     </div>
 
     <div id="mnMembresiaSec">
@@ -2502,6 +2545,7 @@ const ADMIN_NAV = [
   { section: 'REPORTES' },
   { id:'reportePagos',     label:'Rep. Pagos',       icon:'📈', page:'pageReportePagos' },
   { id:'reporteAsistencia', label:'Rep. Asistencia',  icon:'📅', page:'pageReporteAsistencia' },
+  { id:'reporteOrigen',     label:'Origen Miembros',  icon:'🧭', page:'pageReporteOrigen' },
   { section: 'FINANZAS' },
   { id:'inventario',   label:'Inventario',      icon:'📦', page:'pageInventario' },
   { id:'caja',         label:'Caja',            icon:'💰', page:'pageCaja' },
@@ -2525,6 +2569,7 @@ const INSTRUCTOR_NAV = [
   { section: 'REPORTES' },
   { id:'reportePagos',      label:'Rep. Pagos',      icon:'📈', page:'pageReportePagos' },
   { id:'reporteAsistencia', label:'Rep. Asistencia',  icon:'📅', page:'pageReporteAsistencia' },
+  { id:'reporteOrigen',     label:'Origen Miembros',  icon:'🧭', page:'pageReporteOrigen' },
   { section: 'FINANZAS' },
   { id:'inventario',   label:'Inventario',      icon:'📦', page:'pageInventario' },
   { id:'caja',         label:'Caja',            icon:'💰', page:'pageCaja' },
@@ -2628,6 +2673,7 @@ function navigateTo(id) {
   if (id==='credencial')       renderCredencial();
   if (id==='reportePagos')     { initReporteFechas(); renderReportePagos(); }
   if (id==='reporteAsistencia') { initReporteFechas(); renderReporteAsistencia(); }
+  if (id==='reporteOrigen')    { renderReporteOrigen(); }
   if (id==='inventario')        { renderInventario(); }
   if (id==='caja')              { if (!document.getElementById('cajaFecha').value) document.getElementById('cajaFecha').value = fmtDate(new Date()); renderCaja(); }
   if (id==='reporteFinanciero') { renderReporteFinanciero(); }
@@ -3500,6 +3546,37 @@ function closeModal(id, keepEditing) {
   if (!keepEditing) editingMemberId = null;
 }
 
+function toggleOrigenReferido() {
+  const origen = document.getElementById('mnOrigen')?.value;
+  const detWrap = document.getElementById('mnOrigenDetalleWrap');
+  const refWrap = document.getElementById('mnReferidoWrap');
+  const detLabel = document.getElementById('mnOrigenDetalleLabel');
+  if (refWrap) refWrap.style.display = origen==='recomendacion' ? 'block' : 'none';
+  if (detWrap) detWrap.style.display = (origen==='redes' || origen==='otro') ? 'block' : 'none';
+  if (detLabel) detLabel.textContent = origen==='redes' ? 'REDES SOCIALES (CUÁL)' : 'ESPECIFICAR';
+}
+
+function filtrarMiembrosReferido() {
+  const q = (document.getElementById('mnReferidoBusqueda')?.value||'').trim().toLowerCase();
+  const resWrap = document.getElementById('mnReferidoResultados');
+  if (!resWrap) return;
+  const members = DB.get('members',[]).filter(m=>m.id!==editingMemberId).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const filtrados = (q ? members.filter(m=>m.nombre.toLowerCase().includes(q)) : members).slice(0,8);
+  resWrap.innerHTML = filtrados.length ? filtrados.map(m=>`
+    <div onmousedown="seleccionarMiembroReferido('${m.id}','${m.nombre.replace(/'/g,"\\'")}')"
+      style="padding:.55rem .8rem;font-size:.85rem;cursor:pointer;border-bottom:1px solid var(--border);"
+      onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='#fff'">${m.nombre}</div>`).join('')
+    : `<div style="padding:.6rem .8rem;font-size:.83rem;color:var(--text-light);">Sin resultados</div>`;
+  resWrap.style.display = 'block';
+}
+
+function seleccionarMiembroReferido(id, nombre) {
+  document.getElementById('mnReferidoId').value = id;
+  document.getElementById('mnReferidoBusqueda').value = nombre;
+  const resWrap = document.getElementById('mnReferidoResultados');
+  if (resWrap) resWrap.style.display = 'none';
+}
+
 function saveMiembro() {
   const nombre = document.getElementById('mnNombre').value.trim();
   const pin    = document.getElementById('mnPin').value.trim();
@@ -3525,6 +3602,10 @@ function saveMiembro() {
       fechaIngreso: document.getElementById('mnFechaIngreso').value || fmtDate(new Date()),
         fechaIngreso: document.getElementById('mnFechaIngreso').value || fmtDate(new Date()),
         genero: document.getElementById('mnGenero').value || null,
+        origen: document.getElementById('mnOrigen').value || null,
+        origenDetalle: document.getElementById('mnOrigenDetalle').value.trim() || null,
+        referidoPorId: document.getElementById('mnOrigen').value==='recomendacion' ? (document.getElementById('mnReferidoId').value || null) : null,
+        referidoPorNombre: document.getElementById('mnOrigen').value==='recomendacion' ? (document.getElementById('mnReferidoBusqueda').value.trim() || null) : null,
         password: (()=>{
           const v = document.getElementById('mnPassword').value.trim();
           const result = v !== '' ? v : (members[idx].password || null);
@@ -3545,6 +3626,10 @@ function saveMiembro() {
       planTipo: document.getElementById('mnPlanTipo').value || 'mes',
       fechaNac: document.getElementById('mnFechaNac').value || null,
       genero: document.getElementById('mnGenero').value || null,
+      origen: document.getElementById('mnOrigen').value || null,
+      origenDetalle: document.getElementById('mnOrigenDetalle').value.trim() || null,
+      referidoPorId: document.getElementById('mnOrigen').value==='recomendacion' ? (document.getElementById('mnReferidoId').value || null) : null,
+      referidoPorNombre: document.getElementById('mnOrigen').value==='recomendacion' ? (document.getElementById('mnReferidoBusqueda').value.trim() || null) : null,
       activo:true, fechaReg:fmtDate(new Date())
     });
     syncRecord('saveMember', members[members.length-1]);
@@ -3559,12 +3644,91 @@ function saveMiembro() {
 }
 
 function clearMiembroForm() {
-  ['mnNombre','mnTel','mnEmail','mnPin','mnNotas','mnFechaNac','mnPassword'].forEach(id => {
+  ['mnNombre','mnTel','mnEmail','mnPin','mnNotas','mnFechaNac','mnPassword','mnOrigenDetalle','mnReferidoBusqueda','mnReferidoId'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value='';
   });
   const pt = document.getElementById('mnPlanTipo'); if(pt) pt.value='mes';
+  const or = document.getElementById('mnOrigen'); if(or) or.value='';
   const ps = document.getElementById('mnPasswordStatus'); if(ps) ps.innerHTML='';
+  toggleOrigenReferido();
   editingMemberId = null;
+}
+
+function antiguedadTexto(fechaReg) {
+  if (!fechaReg) return '—';
+  const inicio = new Date(limpiarFecha(fechaReg)+'T00:00:00');
+  const hoy = new Date();
+  let meses = (hoy.getFullYear()-inicio.getFullYear())*12 + (hoy.getMonth()-inicio.getMonth());
+  if (hoy.getDate() < inicio.getDate()) meses--;
+  if (meses < 0) meses = 0;
+  const años = Math.floor(meses/12);
+  const mesesRest = meses%12;
+  if (años>0 && mesesRest>0) return `${años} año${años>1?'s':''} ${mesesRest} mes${mesesRest>1?'es':''}`;
+  if (años>0) return `${años} año${años>1?'s':''}`;
+  if (mesesRest>0) return `${mesesRest} mes${mesesRest>1?'es':''}`;
+  return 'Menos de 1 mes';
+}
+
+function asistenciasPorMesHTML(id) {
+  const att = DB.get('attendance',[]).filter(a=>a.memberId===id);
+  if (!att.length) return `<div class="no-data" style="padding:1rem;">Sin asistencias registradas</div>`;
+  const porMes = {};
+  att.forEach(a => {
+    const key = limpiarFecha(a.fecha).substring(0,7); // YYYY-MM
+    porMes[key] = (porMes[key]||0)+1;
+  });
+  const meses = Object.keys(porMes).sort().reverse().slice(0,12);
+  const nombresMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(85px,1fr));gap:.5rem;">
+    ${meses.map(k=>{
+      const [y,mm] = k.split('-');
+      return `<div style="background:var(--bg);border-radius:8px;padding:.5rem;text-align:center;">
+        <div style="font-size:.68rem;color:var(--text-light);">${nombresMes[Number(mm)-1]} ${y}</div>
+        <div style="font-family:var(--font-display);font-size:1.1rem;">${porMes[k]}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function historialComprasHTML(id) {
+  const movs = DB.get('movimientos',[]).filter(m=>m.miembroId===id && m.tipo==='ingreso');
+  const cred = DB.get('creditos',[]).filter(c=>c.miembroId===id);
+  const items = [
+    ...movs.map(m=>({fecha:m.fecha, concepto:m.concepto, monto:m.monto, estado:'pagado'})),
+    ...cred.map(c=>({fecha:c.fecha, concepto:c.concepto, monto:c.monto, estado:c.estado}))
+  ].sort((a,b)=>b.fecha<a.fecha?-1:1);
+  if (!items.length) return `<div class="no-data" style="padding:1rem;">Sin compras registradas</div>`;
+  return `<div style="background:var(--bg);border-radius:2px;overflow:hidden;">
+    ${items.slice(0,10).map(it=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;border-bottom:1px solid var(--border);gap:.6rem;">
+        <div><div style="font-size:.85rem;">${it.concepto}</div><div style="font-size:.72rem;color:var(--text-light);">${formatDateNice(it.fecha)}</div></div>
+        <div style="text-align:right;">
+          <div style="font-family:var(--font-display);">$${Number(it.monto||0).toLocaleString('es-MX')}</div>
+          ${it.estado==='pendiente'?'<span class="badge badge-yellow" style="font-size:.6rem;">PENDIENTE</span>':''}
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function historialPagosHTML(id) {
+  const pagos = DB.get('payments',[]).filter(p=>p.memberId===id).sort((a,b)=>b.fechaPago<a.fechaPago?-1:1);
+  if (!pagos.length) return `<div class="no-data" style="padding:1rem;">Sin pagos registrados</div>`;
+  return `<div style="background:var(--bg);border-radius:2px;overflow:hidden;">
+    ${pagos.slice(0,10).map(p=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;border-bottom:1px solid var(--border);gap:.6rem;">
+        <div><div style="font-size:.85rem;text-transform:capitalize;">Mensualidad · ${p.plan}</div><div style="font-size:.72rem;color:var(--text-light);">${formatDateNice(p.fechaPago)} · ${p.metodo||''}</div></div>
+        <div style="font-family:var(--font-display);">$${Number(p.monto||0).toLocaleString('es-MX')}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+function origenTexto(m) {
+  const map = { recomendacion:'👥 Recomendación', redes:'📱 Redes sociales', google:'🔍 Google/Internet', publicidad:'📰 Publicidad', caminando:'🚶 Pasó caminando', otro:'✏️ Otro' };
+  if (!m.origen) return null;
+  let txt = map[m.origen] || m.origen;
+  if (m.origen==='recomendacion' && m.referidoPorNombre) txt += `: ${m.referidoPorNombre}`;
+  else if (m.origenDetalle) txt += `: ${m.origenDetalle}`;
+  return txt;
 }
 
 function viewMiembro(id) {
@@ -3577,6 +3741,7 @@ function viewMiembro(id) {
   const total = att.filter(a=>a.memberId===id).length;
   editingMemberId = id;
   const diff = pago ? Math.ceil((new Date(limpiarFecha(pago.fechaFin)+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24)) : null;
+  const origenTxt = origenTexto(m);
 
   document.getElementById('verMiembroContent').innerHTML = `
     <div class="profile-card">
@@ -3590,15 +3755,27 @@ function viewMiembro(id) {
         </div>
       </div>
     </div>
-    <div class="grid-3" style="margin-bottom:1rem;">
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin-bottom:1rem;">
       <div class="kpi-card"><div class="kpi-label">ASISTENCIAS</div><div class="kpi-value">${total}</div></div>
+      <div class="kpi-card"><div class="kpi-label">ANTIGÜEDAD</div><div class="kpi-value" style="font-size:1rem;">${antiguedadTexto(m.fechaReg)}</div></div>
       <div class="kpi-card"><div class="kpi-label">PIN</div><div class="kpi-value" style="font-size:1.4rem;letter-spacing:4px;">${m.pin}</div></div>
       <div class="kpi-card"><div class="kpi-label">REGISTRADO</div><div class="kpi-value" style="font-size:1rem;">${formatDateNice(m.fechaReg)}</div></div>
     </div>
     ${m.horarioId ? `<div class="alert alert-info" style="margin-bottom:.8rem;">🕐 Horario: <strong>${horarioNombreById(m.horarioId)}</strong></div>` : ''}
+    ${origenTxt ? `<div class="alert alert-info" style="margin-bottom:.8rem;">${origenTxt}</div>` : ''}
     ${creditosDeMiembroHTML(id)}
     ${m.notas ? `<div class="alert alert-info">${m.notas}</div>` : ''}
-    <div class="modal-title" style="font-size:1rem;letter-spacing:2px;margin-bottom:.8rem;">ÚLTIMAS ASISTENCIAS</div>
+
+    <div class="modal-title" style="font-size:1rem;letter-spacing:2px;margin-bottom:.8rem;">ASISTENCIAS POR MES</div>
+    ${asistenciasPorMesHTML(id)}
+
+    <div class="modal-title" style="font-size:1rem;letter-spacing:2px;margin:1.2rem 0 .8rem;">HISTORIAL DE PAGOS</div>
+    ${historialPagosHTML(id)}
+
+    <div class="modal-title" style="font-size:1rem;letter-spacing:2px;margin:1.2rem 0 .8rem;">HISTORIAL DE COMPRAS</div>
+    ${historialComprasHTML(id)}
+
+    <div class="modal-title" style="font-size:1rem;letter-spacing:2px;margin:1.2rem 0 .8rem;">ÚLTIMAS ASISTENCIAS</div>
     <div style="background:var(--bg);border-radius:2px;overflow:hidden;">
       ${att.filter(a=>a.memberId===id).reverse().slice(0,5).map(a=>`
         <div style="display:flex;justify-content:space-between;padding:.6rem 1rem;border-bottom:1px solid var(--border);">
@@ -3625,6 +3802,11 @@ function editMiembro() {
   document.getElementById('mnFechaNac').value  = limpiarFecha(m.fechaNac)||'';
   document.getElementById('mnFechaIngreso').value = limpiarFecha(m.fechaIngreso)||'';
   document.getElementById('mnGenero').value    = m.genero||'';
+  document.getElementById('mnOrigen').value    = m.origen||'';
+  document.getElementById('mnOrigenDetalle').value = m.origenDetalle||'';
+  document.getElementById('mnReferidoBusqueda').value = m.referidoPorNombre||'';
+  document.getElementById('mnReferidoId').value = m.referidoPorId||'';
+  toggleOrigenReferido();
   document.getElementById('mnPassword').value  = '';
   const _pwStatus = document.getElementById('mnPasswordStatus');
   if (_pwStatus) _pwStatus.innerHTML = m.password
@@ -5095,19 +5277,19 @@ function abrirModalVenta() {
   document.getElementById('ventaFecha').value = fmtDate(new Date());
   document.getElementById('ventaNotas').value = '';
   document.getElementById('ventaCredito').checked = false;
-  const busq = document.getElementById('ventaCreditoMiembroBusqueda');
-  const hid  = document.getElementById('ventaCreditoMiembro');
+  const busq = document.getElementById('ventaMiembroBusqueda');
+  const hid  = document.getElementById('ventaMiembro');
   if (busq) busq.value = '';
   if (hid) hid.value = '';
-  const resWrap = document.getElementById('ventaCreditoMiembroResultados');
+  const resWrap = document.getElementById('ventaMiembroResultados');
   if (resWrap) resWrap.style.display = 'none';
   toggleVentaCredito();
   openModal('modalVenta');
 }
 
-function filtrarMiembrosCredito() {
-  const q = (document.getElementById('ventaCreditoMiembroBusqueda')?.value||'').trim().toLowerCase();
-  const resWrap = document.getElementById('ventaCreditoMiembroResultados');
+function filtrarMiembrosVenta() {
+  const q = (document.getElementById('ventaMiembroBusqueda')?.value||'').trim().toLowerCase();
+  const resWrap = document.getElementById('ventaMiembroResultados');
   if (!resWrap) return;
   const members = DB.get('members',[]).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const filtrados = (q ? members.filter(m=>m.nombre.toLowerCase().includes(q)) : members).slice(0,8);
@@ -5115,7 +5297,7 @@ function filtrarMiembrosCredito() {
     resWrap.innerHTML = `<div style="padding:.6rem .8rem;font-size:.83rem;color:var(--text-light);">Sin resultados</div>`;
   } else {
     resWrap.innerHTML = filtrados.map(m=>`
-      <div onmousedown="seleccionarMiembroCredito('${m.id}','${m.nombre.replace(/'/g,"\\'")}')"
+      <div onmousedown="seleccionarMiembroVenta('${m.id}','${m.nombre.replace(/'/g,"\\'")}')"
         style="padding:.55rem .8rem;font-size:.85rem;cursor:pointer;border-bottom:1px solid var(--border);"
         onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='#fff'">
         ${m.nombre}
@@ -5124,18 +5306,18 @@ function filtrarMiembrosCredito() {
   resWrap.style.display = 'block';
 }
 
-function seleccionarMiembroCredito(id, nombre) {
-  document.getElementById('ventaCreditoMiembro').value = id;
-  document.getElementById('ventaCreditoMiembroBusqueda').value = nombre;
-  const resWrap = document.getElementById('ventaCreditoMiembroResultados');
+function seleccionarMiembroVenta(id, nombre) {
+  document.getElementById('ventaMiembro').value = id;
+  document.getElementById('ventaMiembroBusqueda').value = nombre;
+  const resWrap = document.getElementById('ventaMiembroResultados');
   if (resWrap) resWrap.style.display = 'none';
 }
 
 function toggleVentaCredito() {
   const credito = document.getElementById('ventaCredito')?.checked;
-  const wrap = document.getElementById('ventaCreditoMiembroWrap');
   const btn  = document.getElementById('btnGuardarVenta');
-  if (wrap) wrap.style.display = credito ? 'block' : 'none';
+  const label = document.getElementById('ventaMiembroLabel');
+  if (label) label.textContent = credito ? 'MIEMBRO (REQUERIDO PARA CRÉDITO)' : 'MIEMBRO (OPCIONAL — para su historial de compras)';
   if (btn) {
     btn.textContent = credito ? 'REGISTRAR CRÉDITO' : 'REGISTRAR VENTA';
     btn.style.background = credito ? '#B45309' : '#16A34A';
@@ -5159,7 +5341,7 @@ function guardarVenta() {
   const precio = Number(document.getElementById('ventaPrecioUnit').value||0);
   const total  = Number(document.getElementById('ventaTotal').value||0) || precio*cant;
   const esCredito = document.getElementById('ventaCredito')?.checked;
-  const miembroId = esCredito ? document.getElementById('ventaCreditoMiembro')?.value : '';
+  const miembroId = document.getElementById('ventaMiembro')?.value || '';
 
   if (esCredito && !miembroId) { toast('Selecciona a qué miembro se le asigna el crédito','error'); return; }
 
@@ -5173,6 +5355,8 @@ function guardarVenta() {
   }
 
   const prod = productos.find(p=>p.id===prodId);
+  const members = DB.get('members',[]);
+  const miembro = miembroId ? members.find(m=>m.id===miembroId) : null;
   const categoriaVenta = document.getElementById('ventaCategoriaIng')?.value || '';
   const concepto = `Venta: ${prod?.nombre||'Producto'} x${cant}`;
   const fecha = document.getElementById('ventaFecha').value;
@@ -5180,8 +5364,6 @@ function guardarVenta() {
   const notas = document.getElementById('ventaNotas').value.trim();
 
   if (esCredito) {
-    const members = DB.get('members',[]);
-    const miembro = members.find(m=>m.id===miembroId);
     const creditos = DB.get('creditos',[]);
     creditos.push({
       id: 'CR'+Date.now(),
@@ -5208,7 +5390,9 @@ function guardarVenta() {
       monto: total,
       metodo,
       fecha,
-      notas
+      notas,
+      miembroId: miembroId || null,
+      miembroNombre: miembro?.nombre || null
     };
     const movimientos = DB.get('movimientos',[]);
     movimientos.push(mov);
@@ -6619,6 +6803,39 @@ function exportReportePagosCSV() {
 // ════════════════════════════════════════════
 // REPORTE DE ASISTENCIA
 // ════════════════════════════════════════════
+function renderReporteOrigen() {
+  const members = DB.get('members', []);
+  const map = { recomendacion:'👥 Recomendación', redes:'📱 Redes sociales', google:'🔍 Google/Internet', publicidad:'📰 Publicidad', caminando:'🚶 Pasó caminando', otro:'✏️ Otro' };
+  const conteo = {};
+  members.forEach(m => {
+    const key = m.origen || 'sin_especificar';
+    conteo[key] = (conteo[key]||0) + 1;
+  });
+  const total = members.length || 1;
+
+  const kpis = document.getElementById('roKpis');
+  if (kpis) kpis.innerHTML = Object.keys(map).map(k => `
+    <div class="kpi-card"><div class="kpi-label">${map[k]}</div><div class="kpi-value">${conteo[k]||0}</div><div class="kpi-sub">${Math.round(((conteo[k]||0)/total)*100)}% del total</div></div>
+  `).join('') + (conteo['sin_especificar'] ? `
+    <div class="kpi-card"><div class="kpi-label">⬜ SIN ESPECIFICAR</div><div class="kpi-value">${conteo['sin_especificar']}</div><div class="kpi-sub">${Math.round((conteo['sin_especificar']/total)*100)}% del total</div></div>` : '');
+
+  // Top referidores
+  const conteoRef = {};
+  members.forEach(m => {
+    if (m.origen==='recomendacion' && m.referidoPorId) {
+      conteoRef[m.referidoPorId] = (conteoRef[m.referidoPorId]||0) + 1;
+    }
+  });
+  const ranking = Object.entries(conteoRef)
+    .map(([id,count]) => ({ nombre: members.find(x=>x.id===id)?.nombre || '—', count }))
+    .sort((a,b)=>b.count-a.count);
+
+  const tbody = document.getElementById('roTablaReferidores');
+  if (tbody) tbody.innerHTML = ranking.length ? ranking.map(r=>`
+    <tr><td style="font-weight:600;">${r.nombre}</td><td style="font-family:var(--font-display);color:#16A34A;">${r.count}</td></tr>
+  `).join('') : `<tr><td colspan="2"><div class="no-data">Aún no hay recomendaciones registradas</div></td></tr>`;
+}
+
 function renderReporteAsistencia() {
   const tipo  = document.getElementById('raTipo')?.value || 'mes';
   const anio  = document.getElementById('raAnio')?.value || new Date().getFullYear();
