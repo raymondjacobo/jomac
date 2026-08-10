@@ -1465,7 +1465,7 @@
           </div>
         </div>
         <table>
-          <thead><tr><th>FECHA</th><th>MIEMBRO</th><th>PLAN</th><th>MONTO</th><th>MÉTODO</th></tr></thead>
+          <thead><tr><th>FECHA</th><th>MIEMBRO</th><th>PLAN</th><th>PERIODO</th><th>MONTO</th><th>MÉTODO</th></tr></thead>
           <tbody id="rpTabla"></tbody>
         </table>
       </div>
@@ -3710,13 +3710,27 @@ function historialComprasHTML(id) {
   </div>`;
 }
 
+function periodoPagoTexto(p) {
+  if (!p.fechaInicio || !p.fechaFin) return '';
+  if (p.plan === 'mes') {
+    const inicio = new Date(limpiarFecha(p.fechaInicio)+'T00:00:00');
+    const nombresMes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    return `Cubre: ${nombresMes[inicio.getMonth()]} ${inicio.getFullYear()}`;
+  }
+  return `Cubre: ${formatDateNice(p.fechaInicio)} — ${formatDateNice(p.fechaFin)}`;
+}
+
 function historialPagosHTML(id) {
   const pagos = DB.get('payments',[]).filter(p=>p.memberId===id).sort((a,b)=>b.fechaPago<a.fechaPago?-1:1);
   if (!pagos.length) return `<div class="no-data" style="padding:1rem;">Sin pagos registrados</div>`;
   return `<div style="background:var(--bg);border-radius:2px;overflow:hidden;">
     ${pagos.slice(0,10).map(p=>`
       <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;border-bottom:1px solid var(--border);gap:.6rem;">
-        <div><div style="font-size:.85rem;text-transform:capitalize;">Mensualidad · ${p.plan}</div><div style="font-size:.72rem;color:var(--text-light);">${formatDateNice(p.fechaPago)} · ${p.metodo||''}</div></div>
+        <div>
+          <div style="font-size:.85rem;text-transform:capitalize;">Mensualidad · ${p.plan}</div>
+          <div style="font-size:.72rem;color:var(--text-light);">Pagado: ${formatDateNice(p.fechaPago)} · ${p.metodo||''}</div>
+          ${periodoPagoTexto(p) ? `<div style="font-size:.72rem;color:#16A34A;font-weight:600;">${periodoPagoTexto(p)}</div>` : ''}
+        </div>
         <div style="font-family:var(--font-display);">$${Number(p.monto||0).toLocaleString('es-MX')}</div>
       </div>`).join('')}
   </div>`;
@@ -6744,7 +6758,7 @@ function renderReportePagos() {
 
   const tbody = document.getElementById('rpTabla');
   if (!tbody) return;
-  if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="no-data">Sin pagos en este período</div></td></tr>`; return; }
+  if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="no-data">Sin pagos en este período</div></td></tr>`; return; }
   const icons = { efectivo:'💵', transferencia:'🏦', tarjeta:'💳' };
   const sorted = filtered.sort((a,b)=>limpiarFecha(a.fechaPago).localeCompare(limpiarFecha(b.fechaPago)));
   const totEfectivo      = sorted.filter(p=>p.metodo==='efectivo').reduce((s,p)=>s+Number(p.monto),0);
@@ -6757,29 +6771,30 @@ function renderReportePagos() {
       <td style="font-size:.82rem;color:var(--text-light);">${formatDateNice(p.fechaPago)}</td>
       <td>${p.memberName}</td>
       <td>${planBadge(p.plan)}</td>
+      <td style="font-size:.78rem;color:var(--text-light);">${periodoPagoTexto(p).replace('Cubre: ','')}</td>
       <td style="font-family:var(--font-display);font-size:1.1rem;">$${Number(p.monto).toLocaleString()}</td>
       <td>${icons[p.metodo]||'💵'} ${p.metodo}</td>
     </tr>`).join('') + `
     <tr style="border-top:2px solid var(--border);background:#f9f9f9;">
-      <td colspan="5" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO POR TIPO</td>
+      <td colspan="6" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO POR TIPO</td>
     </tr>
     ${totEfectivo>0?`<tr style="background:#f9f9f9;">
-      <td colspan="3" style="font-family:var(--font-cond);font-size:.85rem;">💵 Efectivo</td>
+      <td colspan="4" style="font-family:var(--font-cond);font-size:.85rem;">💵 Efectivo</td>
       <td style="font-family:var(--font-display);font-size:1rem;">$${totEfectivo.toLocaleString('es-MX')}</td>
       <td></td>
     </tr>`:''}
     ${totTransferencia>0?`<tr style="background:#f9f9f9;">
-      <td colspan="3" style="font-family:var(--font-cond);font-size:.85rem;">🏦 Transferencia</td>
+      <td colspan="4" style="font-family:var(--font-cond);font-size:.85rem;">🏦 Transferencia</td>
       <td style="font-family:var(--font-display);font-size:1rem;">$${totTransferencia.toLocaleString('es-MX')}</td>
       <td></td>
     </tr>`:''}
     ${totTarjeta>0?`<tr style="background:#f9f9f9;">
-      <td colspan="3" style="font-family:var(--font-cond);font-size:.85rem;">💳 Tarjeta</td>
+      <td colspan="4" style="font-family:var(--font-cond);font-size:.85rem;">💳 Tarjeta</td>
       <td style="font-family:var(--font-display);font-size:1rem;">$${totTarjeta.toLocaleString('es-MX')}</td>
       <td></td>
     </tr>`:''}
     <tr style="background:#fff3f3;border-top:2px solid var(--red);">
-      <td colspan="3" style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--red);">TOTAL</td>
+      <td colspan="4" style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--red);">TOTAL</td>
       <td style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--red);">$${totGeneral.toLocaleString('es-MX')}</td>
       <td></td>
     </tr>`;
