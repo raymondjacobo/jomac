@@ -1632,10 +1632,13 @@
         <div id="listCatEgr"></div>
       </div>
 
-      <div class="config-section" style="border:1.5px solid #FDE68A;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-          <div class="config-section-title" style="color:#B45309;margin:0;">🛠️ CATÁLOGO DE EQUIPOS</div>
-          <button class="btn-primary" style="font-size:.75rem;padding:.35rem .8rem;background:#B45309;border-color:#B45309;" onclick="abrirFormEquipo()">+ AGREGAR</button>
+      <div class="config-section" style="border:1.5px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+          <div class="config-section-title" style="color:var(--text);margin:0;">🛠️ CATÁLOGO DE EQUIPOS</div>
+          <div style="display:flex;gap:.5rem;">
+            <button class="btn-secondary" style="font-size:.75rem;padding:.35rem .8rem;border-color:var(--red);color:var(--red);" onclick="exportReporteEquiposPDF()">📄 REPORTE DE INVENTARIO</button>
+            <button class="btn-primary" style="font-size:.75rem;padding:.35rem .8rem;background:var(--red);border-color:var(--red);" onclick="abrirFormEquipo()">+ AGREGAR</button>
+          </div>
         </div>
         <div style="font-size:.8rem;color:var(--text-light);margin-bottom:.7rem;">Se usa en Finanzas &gt; Egresos &gt; Compra de equipos.</div>
         <div id="listEquipos"></div>
@@ -1799,7 +1802,7 @@
       <input type="hidden" id="ventaMiembro"/>
       <div id="ventaMiembroResultados" style="display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;z-index:50;margin-top:2px;"></div>
     </div>
-    <div class="field-group" style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:.7rem .9rem;">
+    <div class="field-group" style="background:#F4F5F7;border:1px solid var(--border);border-radius:8px;padding:.7rem .9rem;">
       <label style="display:flex;align-items:center;gap:.5rem;margin:0;cursor:pointer;">
         <input type="checkbox" id="ventaCredito" onchange="toggleVentaCredito()" style="width:auto;"/>
         <span>🔴 VENTA A CRÉDITO (pendiente de pago — requiere miembro)</span>
@@ -3267,7 +3270,7 @@ function renderMiembros() {
     return `<tr>
       <td><div style="display:flex;align-items:center;gap:.7rem;">
         <div class="member-avatar">${m.nombre[0]}</div>
-        <div><div style="font-weight:600">${m.nombre}${debeCredito>0?` <span style="background:#FEF3C7;color:#92400E;border-radius:4px;padding:.1rem .4rem;font-size:.68rem;font-weight:700;">DEBE $${debeCredito.toLocaleString('es-MX')}</span>`:''}</div>
+        <div><div style="font-weight:600">${m.nombre}${debeCredito>0?` <span style="background:#FFF1F2;color:var(--red);border-radius:4px;padding:.1rem .4rem;font-size:.68rem;font-weight:700;">DEBE $${debeCredito.toLocaleString('es-MX')}</span>`:''}</div>
           <div style="font-size:.72rem;color:var(--text-light);">${m.email||''}</div></div>
       </div></td>
       <td><code style="background:var(--bg);padding:2px 7px;border-radius:2px;font-size:.85rem;">${m.pin}</code></td>
@@ -5095,8 +5098,8 @@ function renderCreditos() {
       <td style="font-size:.82rem;color:var(--text-light);">${formatDateNice(c.fecha)}</td>
       <td style="font-weight:600;">${c.miembroNombre}</td>
       <td>${c.concepto}</td>
-      <td style="font-family:var(--font-display);color:#B45309;">$${Number(c.monto||0).toLocaleString('es-MX')}</td>
-      <td><span class="badge badge-yellow">PENDIENTE</span></td>
+      <td style="font-family:var(--font-display);color:var(--red);">$${Number(c.monto||0).toLocaleString('es-MX')}</td>
+      <td><span class="badge" style="background:#F4F5F7;color:var(--text);border:1px solid var(--border);">PENDIENTE</span></td>
       <td>
         <button class="btn-primary" style="padding:.3rem .8rem;font-size:.72rem;width:auto;background:#16A34A;border-color:#16A34A;" onclick="pagarCredito('${c.id}')">💰 REGISTRAR PAGO</button>
         <button class="btn-secondary" style="padding:.3rem .6rem;font-size:.72rem;width:auto;color:#DC2626;border-color:#FECACA;" onclick="eliminarCredito('${c.id}')" title="Eliminar (venta registrada mal)">🗑️</button>
@@ -5172,7 +5175,7 @@ function creditosDeMiembroHTML(miembroId) {
   if (!pend.length) return '';
   const total = pend.reduce((s,c)=>s+Number(c.monto||0),0);
   return `
-    <div class="alert" style="background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;margin-bottom:.8rem;">
+    <div class="alert" style="background:#F4F5F7;border:1px solid var(--border);color:var(--text);margin-bottom:.8rem;">
       🔴 <strong>Debe $${total.toLocaleString('es-MX')}</strong> en ${pend.length} crédito${pend.length>1?'s':''} pendiente${pend.length>1?'s':''}
     </div>
     <div style="background:var(--bg);border-radius:8px;overflow:hidden;margin-bottom:1rem;">
@@ -5183,7 +5186,7 @@ function creditosDeMiembroHTML(miembroId) {
             <div style="font-size:.72rem;color:var(--text-light);">${formatDateNice(c.fecha)}</div>
           </div>
           <div style="display:flex;align-items:center;gap:.6rem;">
-            <span style="font-family:var(--font-display);color:#B45309;">$${Number(c.monto).toLocaleString('es-MX')}</span>
+            <span style="font-family:var(--font-display);color:var(--red);">$${Number(c.monto).toLocaleString('es-MX')}</span>
             <button class="btn-primary" style="padding:.25rem .6rem;font-size:.68rem;width:auto;background:#16A34A;border-color:#16A34A;" onclick="pagarCredito('${c.id}')">PAGAR</button>
             <button class="btn-secondary" style="padding:.25rem .5rem;font-size:.68rem;width:auto;color:#DC2626;border-color:#FECACA;" onclick="eliminarCredito('${c.id}')" title="Eliminar">🗑️</button>
           </div>
@@ -5334,8 +5337,8 @@ function toggleVentaCredito() {
   if (label) label.textContent = credito ? 'MIEMBRO (REQUERIDO PARA CRÉDITO)' : 'MIEMBRO (OPCIONAL — para su historial de compras)';
   if (btn) {
     btn.textContent = credito ? 'REGISTRAR CRÉDITO' : 'REGISTRAR VENTA';
-    btn.style.background = credito ? '#B45309' : '#16A34A';
-    btn.style.borderColor = credito ? '#B45309' : '#16A34A';
+    btn.style.background = credito ? '#1e1e1e' : '#16A34A';
+    btn.style.borderColor = credito ? '#1e1e1e' : '#16A34A';
   }
 }
 
@@ -5467,7 +5470,7 @@ function toggleEgresoProducto() {
   } else if (modo === 'equipo') {
     const equipos = getEquipos();
     sel.innerHTML = '<option value="">-- Sin equipo específico --</option>' +
-      equipos.map(e=>`<option value="${e.id}" data-precio="${e.precio||0}">${e.nombre}</option>`).join('');
+      equipos.map(e=>`<option value="${e.id}" data-precio="${e.precio||0}">${e.nombre} (existencia: ${Number(e.stock||0)})</option>`).join('');
     if (label) label.textContent = 'EQUIPO (OPCIONAL)';
     wrap.style.display = 'block';
   } else if (modo === 'propio') {
@@ -5512,6 +5515,15 @@ function guardarEgreso() {
       DB.set('productos', productos);
     }
   }
+  // Si es compra de equipos, sumar a la existencia del catálogo de equipos
+  if (modoActual==='equipo' && prodId) {
+    const equipos = getEquipos();
+    const eidx = equipos.findIndex(e=>e.id===prodId);
+    if (eidx>=0) {
+      equipos[eidx].stock = Number(equipos[eidx].stock||0) + cant;
+      saveEquipos(equipos);
+    }
+  }
 
   const mov = {
     id: 'M'+Date.now(),
@@ -5530,6 +5542,7 @@ function guardarEgreso() {
   closeModal('modalEgreso');
   renderCaja();
   renderInventario();
+  if (typeof renderListEquipos === 'function') renderListEquipos();
   syncGoogleSheets(true);
   toast('Egreso registrado','success');
 }
@@ -5640,11 +5653,11 @@ function renderReporteFinanciero() {
         <tbody>${filas}</tbody></table>`;
 
       const pendientesHTML = creditosNuevosHoy.filter(c=>c.estado==='pendiente').length ? `
-        <div class="table-wrap" style="margin-top:1rem;border:1px solid #FDE68A;">
-          <div class="table-header"><div class="table-title" style="color:#B45309;">🔴 CRÉDITOS NUEVOS ESTE DÍA (AÚN NO CUENTAN COMO INGRESO)</div></div>
+        <div class="table-wrap" style="margin-top:1rem;border:1px solid var(--border);">
+          <div class="table-header"><div class="table-title" style="color:var(--red);">🔴 CRÉDITOS NUEVOS ESTE DÍA (AÚN NO CUENTAN COMO INGRESO)</div></div>
           <table><thead><tr><th>CONCEPTO</th><th>MIEMBRO</th><th>MONTO</th></tr></thead>
           <tbody>${creditosNuevosHoy.filter(c=>c.estado==='pendiente').map(c=>`
-            <tr><td>${c.concepto}</td><td>${c.miembroNombre}</td><td style="font-family:var(--font-display);color:#B45309;">$${Number(c.monto).toLocaleString('es-MX')}</td></tr>`).join('')}
+            <tr><td>${c.concepto}</td><td>${c.miembroNombre}</td><td style="font-family:var(--font-display);color:var(--red);">$${Number(c.monto).toLocaleString('es-MX')}</td></tr>`).join('')}
           </tbody></table>
         </div>` : '';
 
@@ -5693,7 +5706,7 @@ function renderCatalogoCats() {
       <div style="display:flex;align-items:center;gap:.7rem;padding:.55rem .8rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:.4rem;">
         <span style="font-size:1.2rem;">${c.icon}</span>
         <span style="flex:1;font-size:.88rem;font-weight:500;">${c.nombre}</span>
-        ${(tipo==='egr' && c.vincula==='propio') ? `<button data-id="${c.id}" onclick="abrirCatalogoPropio('${c.id}')" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#B45309;" title="Administrar artículos de esta categoría">📦</button>` : ''}
+        ${(tipo==='egr' && c.vincula==='propio') ? `<button data-id="${c.id}" onclick="abrirCatalogoPropio('${c.id}')" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--red);" title="Administrar artículos de esta categoría">📦</button>` : ''}
         <button data-tipo="${tipo}" data-id="${c.id}" data-accion="editar" onclick="handleCatBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--text-light);">✏️</button>
         <button data-tipo="${tipo}" data-id="${c.id}" data-accion="eliminar" onclick="handleCatBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>
       </div>`).join('');
@@ -5802,7 +5815,7 @@ function abrirCatalogoPropio(catId) {
           style="flex:1;min-width:140px;border:1px solid var(--border);border-radius:6px;padding:.45rem .7rem;font-size:.88rem;font-family:var(--font-body);"/>
         <input id="catalogoPropioPrecio" type="number" placeholder="Precio ref. (opcional)"
           style="width:130px;border:1px solid var(--border);border-radius:6px;padding:.45rem .7rem;font-size:.88rem;font-family:var(--font-body);"/>
-        <button onclick="agregarItemCatalogoPropio('${catId}')" style="background:#B45309;color:#fff;border:none;border-radius:6px;padding:.45rem 1rem;font-family:var(--font-cond);font-size:.82rem;font-weight:700;letter-spacing:1px;cursor:pointer;">+ AGREGAR</button>
+        <button onclick="agregarItemCatalogoPropio('${catId}')" style="background:var(--red);color:#fff;border:none;border-radius:6px;padding:.45rem 1rem;font-family:var(--font-cond);font-size:.82rem;font-weight:700;letter-spacing:1px;cursor:pointer;">+ AGREGAR</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -5871,6 +5884,96 @@ function eliminarCategoria(tipo, id) {
 function getEquipos() { return DB.get('equipos', []); }
 function saveEquipos(list) { DB.set('equipos', list); }
 
+function exportReporteEquiposPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+
+  // Header rojo (colores de marca JOMAC: negro, rojo, grises)
+  doc.setFillColor(227,0,15);
+  doc.rect(0,0,W,22,'F');
+
+  const logoEl = document.querySelector('img[alt="JOMAC"]');
+  if (logoEl && logoEl.src) {
+    try { doc.addImage(logoEl.src,'PNG',8,3,30,16); } catch(e) {}
+  }
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13); doc.setTextColor(255,255,255);
+  doc.text('JOMAC ENTRENAMIENTO FUNCIONAL', 44, 11);
+  doc.setFontSize(7); doc.setFont('helvetica','normal');
+  doc.text('INVENTARIO DE EQUIPO — ' + new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase(), 44, 17);
+
+  const equipos = getEquipos();
+  const headers = ['#','DESCRIPCIÓN','COSTO REF.','EXISTENCIA','VALOR TOTAL'];
+  const colW = [10, 90, 30, 28, 32];
+
+  let y = 32;
+  doc.setFillColor(227,0,15);
+  doc.rect(10, y-5, W-20, 7, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
+  let x = 10;
+  headers.forEach((h,i) => { doc.text(h, x+2, y); x += colW[i]; });
+
+  y += 5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  let valorTotalGeneral = 0;
+
+  equipos.forEach((e, idx) => {
+    if (y > H - 25) {
+      doc.addPage();
+      y = 20;
+      doc.setFillColor(227,0,15);
+      doc.rect(10, y-5, W-20, 7, 'F');
+      doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+      x = 10; headers.forEach((h,i) => { doc.text(h, x+2, y); x += colW[i]; });
+      y += 5;
+      doc.setFont('helvetica','normal');
+    }
+    if (idx % 2 === 0) { doc.setFillColor(245,245,245); doc.rect(10, y-4, W-20, 7, 'F'); }
+    const valorTotal = Number(e.precio||0) * Number(e.stock||0);
+    valorTotalGeneral += valorTotal;
+    doc.setTextColor(30,30,30);
+    const row = [
+      String(idx+1),
+      (e.nombre||'').substring(0,48),
+      e.precio ? '$'+Number(e.precio).toLocaleString('es-MX') : '—',
+      String(Number(e.stock||0)),
+      valorTotal ? '$'+valorTotal.toLocaleString('es-MX') : '—'
+    ];
+    x = 10;
+    row.forEach((val, i) => {
+      if (i===3) { doc.setTextColor(60,60,60); doc.setFont('helvetica','bold'); }
+      else if (i===4) { doc.setTextColor(227,0,15); doc.setFont('helvetica','bold'); }
+      else { doc.setTextColor(30,30,30); doc.setFont('helvetica','normal'); }
+      doc.text(val, x+2, y); x += colW[i];
+    });
+    y += 7;
+  });
+
+  if (!equipos.length) {
+    doc.setTextColor(150,150,150);
+    doc.text('Sin equipos registrados', 10, y);
+    y += 8;
+  }
+
+  // Total general
+  y += 3;
+  doc.setDrawColor(30,30,30);
+  doc.line(10, y-4, W-10, y-4);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(227,0,15);
+  doc.text('VALOR TOTAL DEL INVENTARIO:', 10, y+2);
+  doc.text('$'+valorTotalGeneral.toLocaleString('es-MX'), W-10, y+2, {align:'right'});
+
+  // Footer
+  doc.setTextColor(150,150,150); doc.setFontSize(6); doc.setFont('helvetica','normal');
+  doc.text('JOMAC Gym Manager', 10, H-5);
+  doc.text('Total: '+equipos.length+' tipos de equipo', W-10, H-5, {align:'right'});
+
+  doc.save('Inventario_Equipos_JOMAC.pdf');
+}
+
 function renderListEquipos() {
   const el = document.getElementById('listEquipos');
   if (!el) return;
@@ -5878,7 +5981,13 @@ function renderListEquipos() {
   el.innerHTML = equipos.length ? equipos.map(e=>`
     <div style="display:flex;align-items:center;gap:.7rem;padding:.55rem .8rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:.4rem;">
       <span style="font-size:1.2rem;">🛠️</span>
-      <span style="flex:1;font-size:.88rem;font-weight:500;">${e.nombre}${e.precio?` — $${Number(e.precio).toLocaleString('es-MX')}`:''}</span>
+      <span style="flex:1;font-size:.88rem;font-weight:500;">
+        ${e.nombre}${e.precio?` — $${Number(e.precio).toLocaleString('es-MX')}`:''}
+        <span style="display:inline-block;margin-left:.4rem;background:${Number(e.stock||0)>0?'#ECFDF5':'#FEF2F2'};color:${Number(e.stock||0)>0?'#16A34A':'#DC2626'};border-radius:4px;padding:.05rem .5rem;font-size:.72rem;font-weight:700;">
+          EXISTENCIA: ${Number(e.stock||0)}
+        </span>
+      </span>
+      <button data-id="${e.id}" data-accion="baja" onclick="handleEquipoBtn(this)" title="Dar de baja" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#DC2626;">🔻</button>
       <button data-id="${e.id}" data-accion="editar" onclick="handleEquipoBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--text-light);">✏️</button>
       <button data-id="${e.id}" data-accion="eliminar" onclick="handleEquipoBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>
     </div>`).join('') : `<div style="font-size:.83rem;color:var(--text-light);padding:.5rem;">Sin equipos registrados.</div>`;
@@ -5888,6 +5997,68 @@ function handleEquipoBtn(btn) {
   const id = btn.dataset.id, accion = btn.dataset.accion;
   if (accion === 'editar') abrirFormEquipo(id);
   else if (accion === 'eliminar') eliminarEquipo(id);
+  else if (accion === 'baja') darDeBajaEquipo(id);
+}
+
+function darDeBajaEquipo(id) {
+  const eq = getEquipos().find(e=>e.id===id);
+  if (!eq) return;
+  const disponible = Number(eq.stock||0);
+  if (disponible <= 0) { toast('No hay existencia disponible para dar de baja','error'); return; }
+
+  const prev = document.getElementById('modalBajaEquipo');
+  if (prev) prev.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'modalBajaEquipo';
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-header">
+        <span class="modal-title">🔻 DAR DE BAJA</span>
+        <button class="modal-close" onclick="document.getElementById('modalBajaEquipo').remove()">✕</button>
+      </div>
+      <div style="font-size:.9rem;font-weight:600;margin-bottom:.3rem;">${eq.nombre}</div>
+      <div style="font-size:.78rem;color:var(--text-light);margin-bottom:1rem;">Existencia actual: <strong>${disponible}</strong></div>
+
+      <div class="field-group">
+        <label>CANTIDAD A DAR DE BAJA</label>
+        <input type="number" id="bajaEquipoCantidad" value="1" min="1" max="${disponible}"
+          style="width:100%;border:1px solid var(--border);border-radius:6px;padding:.5rem .7rem;font-size:.9rem;"/>
+      </div>
+      <div class="field-group">
+        <label>MOTIVO</label>
+        <input type="text" id="bajaEquipoMotivo" placeholder="Ej. se descompuso, se perdió, fin de vida útil"
+          style="width:100%;border:1px solid var(--border);border-radius:6px;padding:.5rem .7rem;font-size:.9rem;"/>
+      </div>
+
+      <div style="display:flex;gap:.8rem;margin-top:1rem;">
+        <button class="btn-primary" style="flex:1;background:#1e1e1e;border-color:#1e1e1e;" onclick="confirmarBajaEquipo('${id}')">CONFIRMAR BAJA</button>
+        <button class="btn-secondary" style="flex:1;" onclick="document.getElementById('modalBajaEquipo').remove()">CANCELAR</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('bajaEquipoCantidad').focus();
+}
+
+function confirmarBajaEquipo(id) {
+  const equipos = getEquipos();
+  const idx = equipos.findIndex(e=>e.id===id);
+  if (idx<0) return;
+  const disponible = Number(equipos[idx].stock||0);
+  const cant = Number(document.getElementById('bajaEquipoCantidad')?.value||0);
+  const motivo = document.getElementById('bajaEquipoMotivo')?.value.trim() || '';
+
+  if (!cant || cant <= 0) { toast('Cantidad inválida','error'); return; }
+  if (cant > disponible) { toast('No puedes dar de baja más de la existencia actual','error'); return; }
+
+  equipos[idx].stock = disponible - cant;
+  equipos[idx].bajas = equipos[idx].bajas || [];
+  equipos[idx].bajas.push({ cantidad: cant, motivo, fecha: fmtDate(new Date()) });
+  saveEquipos(equipos);
+  document.getElementById('modalBajaEquipo')?.remove();
+  renderListEquipos();
+  syncGoogleSheets(true);
+  toast(`Baja registrada: ${cant} unidad(es) de ${equipos[idx].nombre}`, 'success');
 }
 
 function abrirFormEquipo(id=null) {
@@ -5899,9 +6070,9 @@ function abrirFormEquipo(id=null) {
   if (!listEl) return;
   const form = document.createElement('div');
   form.id = 'equipoInlineForm';
-  form.style.cssText = `background:#fff;border:2px solid #B45309;border-radius:8px;padding:1rem;margin-bottom:.8rem;`;
+  form.style.cssText = `background:#fff;border:2px solid var(--red);border-radius:8px;padding:1rem;margin-bottom:.8rem;`;
   form.innerHTML = `
-    <div style="font-family:var(--font-cond);font-size:.8rem;font-weight:700;letter-spacing:1px;color:#B45309;margin-bottom:.7rem;">
+    <div style="font-family:var(--font-cond);font-size:.8rem;font-weight:700;letter-spacing:1px;color:var(--red);margin-bottom:.7rem;">
       ${id ? 'EDITAR' : 'NUEVO'} EQUIPO
     </div>
     <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
@@ -5911,15 +6082,19 @@ function abrirFormEquipo(id=null) {
       <input id="equipoInlinePrecio" type="number" placeholder="Precio ref. (opcional)"
         value="${eq?.precio||''}"
         style="width:150px;border:1px solid var(--border);border-radius:6px;padding:.45rem .7rem;font-size:.88rem;font-family:var(--font-body);"/>
+      <input id="equipoInlineStock" type="number" placeholder="${id?'Corregir existencia':'Existencia inicial'}"
+        value="${eq?.stock ?? (id?'':0)}"
+        style="width:150px;border:1px solid var(--border);border-radius:6px;padding:.45rem .7rem;font-size:.88rem;font-family:var(--font-body);"/>
       <button onclick="guardarEquipoInline('${id||''}')"
-        style="background:#B45309;color:#fff;border:none;border-radius:6px;padding:.45rem 1rem;font-family:var(--font-cond);font-size:.82rem;font-weight:700;letter-spacing:1px;cursor:pointer;">
+        style="background:var(--red);color:#fff;border:none;border-radius:6px;padding:.45rem 1rem;font-family:var(--font-cond);font-size:.82rem;font-weight:700;letter-spacing:1px;cursor:pointer;">
         GUARDAR
       </button>
       <button onclick="document.getElementById('equipoInlineForm').remove()"
         style="background:transparent;color:var(--text-light);border:1px solid var(--border);border-radius:6px;padding:.45rem .8rem;font-family:var(--font-cond);font-size:.82rem;cursor:pointer;">
         CANCELAR
       </button>
-    </div>`;
+    </div>
+    ${id ? `<div style="font-size:.72rem;color:var(--text-light);margin-top:.5rem;">💡 Para sumar existencia usa Egresos → Compra de equipos. Este campo es solo para corregir un error de conteo.</div>` : ''}`;
   listEl.insertBefore(form, listEl.firstChild);
   document.getElementById('equipoInlineNombre').focus();
 }
@@ -5927,13 +6102,14 @@ function abrirFormEquipo(id=null) {
 function guardarEquipoInline(id) {
   const nombre = document.getElementById('equipoInlineNombre')?.value.trim();
   const precio = Number(document.getElementById('equipoInlinePrecio')?.value||0);
+  const stock  = Number(document.getElementById('equipoInlineStock')?.value||0);
   if (!nombre) { document.getElementById('equipoInlineNombre').focus(); return; }
   const equipos = getEquipos();
   if (id) {
     const idx = equipos.findIndex(e=>e.id===id);
-    if (idx>=0) equipos[idx] = {...equipos[idx], nombre, precio};
+    if (idx>=0) equipos[idx] = {...equipos[idx], nombre, precio, stock};
   } else {
-    equipos.push({id:'equipo'+Date.now(), nombre, precio});
+    equipos.push({id:'equipo'+Date.now(), nombre, precio, stock, bajas:[]});
   }
   saveEquipos(equipos);
   document.getElementById('equipoInlineForm')?.remove();
@@ -5943,9 +6119,81 @@ function guardarEquipoInline(id) {
 }
 
 function eliminarEquipo(id) {
-  if (!confirm('¿Eliminar este equipo?')) return;
-  saveEquipos(getEquipos().filter(e=>e.id!==id));
+  const eq = getEquipos().find(e=>e.id===id);
+  if (!eq) return;
+  const stock = Number(eq.stock||0);
+  const nBajas = (eq.bajas||[]).length;
+
+  const prev = document.getElementById('modalEliminarEquipo');
+  if (prev) prev.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'modalEliminarEquipo';
+  overlay.className = 'modal-overlay open';
+
+  if (stock > 0 || nBajas > 0) {
+    const detalle = [
+      stock>0 ? `<li>Existencia actual: <strong>${stock}</strong> unidad(es)</li>` : '',
+      nBajas>0 ? `<li>Historial de <strong>${nBajas}</strong> baja(s) registrada(s)</li>` : ''
+    ].join('');
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:420px;">
+        <div class="modal-header">
+          <span class="modal-title" style="color:var(--red);">⚠️ ELIMINAR EQUIPO</span>
+          <button class="modal-close" onclick="document.getElementById('modalEliminarEquipo').remove()">✕</button>
+        </div>
+        <div style="font-size:.9rem;font-weight:600;margin-bottom:.5rem;">${eq.nombre}</div>
+        <div style="background:#F4F5F7;border:1px solid var(--border);border-radius:8px;padding:.7rem .9rem;font-size:.82rem;margin-bottom:.8rem;">
+          Este equipo tiene datos asociados que se perderán permanentemente:
+          <ul style="margin:.4rem 0 0 1.1rem;padding:0;">${detalle}</ul>
+        </div>
+        <div class="field-group">
+          <label>ESCRIBE EL NOMBRE EXACTO PARA CONFIRMAR</label>
+          <input type="text" id="eliminarEquipoConfirmNombre" placeholder="${eq.nombre}"
+            style="width:100%;border:1px solid var(--border);border-radius:6px;padding:.5rem .7rem;font-size:.9rem;"/>
+        </div>
+        <div style="display:flex;gap:.8rem;margin-top:1rem;">
+          <button class="btn-primary" style="flex:1;background:var(--red);border-color:var(--red);" onclick="confirmarEliminarEquipo('${id}')">ELIMINAR</button>
+          <button class="btn-secondary" style="flex:1;" onclick="document.getElementById('modalEliminarEquipo').remove()">CANCELAR</button>
+        </div>
+      </div>`;
+  } else {
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:380px;">
+        <div class="modal-header">
+          <span class="modal-title">ELIMINAR EQUIPO</span>
+          <button class="modal-close" onclick="document.getElementById('modalEliminarEquipo').remove()">✕</button>
+        </div>
+        <div style="font-size:.9rem;margin-bottom:1rem;">¿Eliminar <strong>${eq.nombre}</strong>?</div>
+        <div style="display:flex;gap:.8rem;">
+          <button class="btn-primary" style="flex:1;background:var(--red);border-color:var(--red);" onclick="confirmarEliminarEquipo('${id}')">ELIMINAR</button>
+          <button class="btn-secondary" style="flex:1;" onclick="document.getElementById('modalEliminarEquipo').remove()">CANCELAR</button>
+        </div>
+      </div>`;
+  }
+  document.body.appendChild(overlay);
+  const inp = document.getElementById('eliminarEquipoConfirmNombre');
+  if (inp) inp.focus();
+}
+
+function confirmarEliminarEquipo(id) {
+  const equipos = getEquipos();
+  const eq = equipos.find(e=>e.id===id);
+  if (!eq) return;
+  const stock = Number(eq.stock||0);
+  const nBajas = (eq.bajas||[]).length;
+
+  if (stock > 0 || nBajas > 0) {
+    const escrito = document.getElementById('eliminarEquipoConfirmNombre')?.value.trim().toLowerCase() || '';
+    if (escrito !== eq.nombre.trim().toLowerCase()) {
+      toast('El nombre no coincide — no se eliminó', 'error');
+      return;
+    }
+  }
+
+  saveEquipos(equipos.filter(e=>e.id!==id));
+  document.getElementById('modalEliminarEquipo')?.remove();
   renderListEquipos();
+  syncGoogleSheets(true);
   toast('Equipo eliminado', 'success');
 }
 
