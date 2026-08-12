@@ -971,6 +971,12 @@
           <div class="kpi-icon">📊</div>
           <div class="kpi-sub" id="kpiAnioSub">Año en curso</div>
         </div>
+        <div class="kpi-card yellow" id="kpiVentasHoyCard" style="display:none;">
+          <div class="kpi-label">VENTAS HOY</div>
+          <div class="kpi-value" id="kpiVentasHoy">$0</div>
+          <div class="kpi-icon">🛒</div>
+          <div class="kpi-sub">Módulo Finanzas</div>
+        </div>
         <div class="kpi-card yellow" id="kpiVentasCard" style="display:none;">
           <div class="kpi-label">VENTAS MES</div>
           <div class="kpi-value" id="kpiVentasMes">$0</div>
@@ -2756,19 +2762,32 @@ function loadDashboard() {
 
   // KPI Ventas del módulo Finanzas (independiente de mensualidades)
   const kpiVentasCard = document.getElementById('kpiVentasCard');
+  const kpiVentasHoyCard = document.getElementById('kpiVentasHoyCard');
   const finanzasActivoDash = (currentUser && currentUser.type === 'admin') ||
     DB.get('config',{}).finanzasActivo === true || DB.get('config',{}).finanzasActivo === 'true';
-  if (kpiVentasCard) {
+  const hoyStr = fmtDate(new Date());
+  if (kpiVentasCard || kpiVentasHoyCard) {
     if (finanzasActivoDash) {
-      kpiVentasCard.style.display = '';
       const movimientos = DB.get('movimientos', []);
-      const ventasMes = movimientos
-        .filter(mv => mv.tipo === 'ingreso' && limpiarFecha(mv.fecha).substring(0,7) === thisMonth)
-        .reduce((s,mv) => s + Number(mv.monto||0), 0);
-      const elVentas = document.getElementById('kpiVentasMes');
-      if (elVentas) elVentas.textContent = '$'+ventasMes.toLocaleString('es-MX');
+      if (kpiVentasCard) {
+        kpiVentasCard.style.display = '';
+        const ventasMes = movimientos
+          .filter(mv => mv.tipo === 'ingreso' && limpiarFecha(mv.fecha).substring(0,7) === thisMonth)
+          .reduce((s,mv) => s + Number(mv.monto||0), 0);
+        const elVentas = document.getElementById('kpiVentasMes');
+        if (elVentas) elVentas.textContent = '$'+ventasMes.toLocaleString('es-MX');
+      }
+      if (kpiVentasHoyCard) {
+        kpiVentasHoyCard.style.display = '';
+        const ventasHoy = movimientos
+          .filter(mv => mv.tipo === 'ingreso' && limpiarFecha(mv.fecha) === hoyStr)
+          .reduce((s,mv) => s + Number(mv.monto||0), 0);
+        const elVentasHoy = document.getElementById('kpiVentasHoy');
+        if (elVentasHoy) elVentasHoy.textContent = '$'+ventasHoy.toLocaleString('es-MX');
+      }
     } else {
-      kpiVentasCard.style.display = 'none';
+      if (kpiVentasCard) kpiVentasCard.style.display = 'none';
+      if (kpiVentasHoyCard) kpiVentasHoyCard.style.display = 'none';
     }
   }
 
