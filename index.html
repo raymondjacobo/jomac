@@ -5133,15 +5133,52 @@ function eliminarCredito(id) {
 }
 
 function pagarCredito(id) {
+  const c = DB.get('creditos', []).find(x=>x.id===id);
+  if (!c) return;
+
+  const prev = document.getElementById('modalPagarCredito');
+  if (prev) prev.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'modalPagarCredito';
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:400px;">
+      <div class="modal-header">
+        <span class="modal-title">💰 REGISTRAR PAGO</span>
+        <button class="modal-close" onclick="document.getElementById('modalPagarCredito').remove()">✕</button>
+      </div>
+      <div style="font-size:.9rem;font-weight:600;margin-bottom:.2rem;">${c.miembroNombre}</div>
+      <div style="font-size:.8rem;color:var(--text-light);margin-bottom:.2rem;">${c.concepto}</div>
+      <div style="font-family:var(--font-display);font-size:1.6rem;color:var(--red);margin-bottom:1rem;">$${Number(c.monto).toLocaleString('es-MX')}</div>
+
+      <div class="field-group">
+        <label>MÉTODO DE PAGO</label>
+        <select id="pagarCreditoMetodo">
+          <option value="efectivo" ${c.metodo==='efectivo'?'selected':''}>💵 Efectivo</option>
+          <option value="transferencia" ${c.metodo==='transferencia'?'selected':''}>🏦 Transferencia</option>
+          <option value="tarjeta" ${c.metodo==='tarjeta'?'selected':''}>💳 Tarjeta</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:.8rem;margin-top:1rem;">
+        <button class="btn-primary" style="flex:1;background:#16A34A;border-color:#16A34A;" onclick="confirmarPagoCredito('${id}')">CONFIRMAR PAGO</button>
+        <button class="btn-secondary" style="flex:1;" onclick="document.getElementById('modalPagarCredito').remove()">CANCELAR</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function confirmarPagoCredito(id) {
   const creditos = DB.get('creditos', []);
   const idx = creditos.findIndex(c=>c.id===id);
   if (idx<0) return;
   const c = creditos[idx];
-  if (!confirm(`¿Confirmar pago de $${Number(c.monto).toLocaleString('es-MX')} de ${c.miembroNombre}?`)) return;
+  const metodoPago = document.getElementById('pagarCreditoMetodo')?.value || 'efectivo';
 
   const fechaPago = fmtDate(new Date());
   c.estado = 'pagado';
   c.fechaPago = fechaPago;
+  c.metodoPago = metodoPago; // método real con el que se cobró (puede diferir del método elegido en la venta)
   DB.set('creditos', creditos);
 
   // Al pagarse, ahora sí se registra como ingreso real, con fecha del día de pago
@@ -5153,7 +5190,7 @@ function pagarCredito(id) {
     productoId: c.productoId,
     cantidad: c.cantidad,
     monto: c.monto,
-    metodo: c.metodo||'efectivo',
+    metodo: metodoPago,
     fecha: fechaPago,
     notas: c.notas ? c.notas + ' · Venta original: '+formatDateNice(c.fecha) : 'Venta original: '+formatDateNice(c.fecha)
   };
@@ -5161,6 +5198,7 @@ function pagarCredito(id) {
   movimientos.push(mov);
   DB.set('movimientos', movimientos);
 
+  document.getElementById('modalPagarCredito')?.remove();
   renderCreditos();
   renderCaja();
   if (typeof viewMiembro === 'function' && document.getElementById('modalVerMiembro')?.classList.contains('open')) {
