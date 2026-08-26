@@ -8478,6 +8478,30 @@ function generarReciboCanvas(pago) {
     ctx.fillText(pillLabel, 70, totY+48);
 
     // ══════════════════════════════════════
+    // ESLOGAN GRANDE (espacio blanco antes del pie)
+    // ══════════════════════════════════════
+    (() => {
+      const lineas = [
+        [ {t:'ENTRENA ', c:'#EC1587'}, {t:'TU ', c:'#111111'}, {t:'CUERPO', c:'#FFD400'} ],
+        [ {t:'LIBERA ',  c:'#EC1587'}, {t:'TU ', c:'#111111'}, {t:'MENTE', c:'#29ABE2'} ],
+      ];
+      const sloganY = totY + 160;
+      const lineH = 60;
+      ctx.font = '900 52px "Luckiest Guy", sans-serif';
+      lineas.forEach((linea, i) => {
+        const totalW = linea.reduce((s,p)=>s+ctx.measureText(p.t).width,0);
+        let px = W/2 - totalW/2;
+        ctx.textAlign = 'left';
+        linea.forEach(p => {
+          ctx.fillStyle = p.c;
+          ctx.fillText(p.t, px, sloganY + i*lineH);
+          px += ctx.measureText(p.t).width;
+        });
+      });
+      ctx.textAlign = 'center';
+    })();
+
+    // ══════════════════════════════════════
     // PIE DE PÁGINA
     // ══════════════════════════════════════
     const footY = H - 130;
@@ -8499,28 +8523,6 @@ function generarReciboCanvas(pago) {
     ctx.font = '19px "Barlow Condensed", sans-serif';
     ctx.fillText('Generado: ' + new Date().toLocaleString('es-MX'), W/2, footY+72);
 
-    // Eslogan de marca, centrado, cada palabra con su color
-    (() => {
-      const palabras = [
-        {t:'ENTRENA ', c:'#EC1587'},
-        {t:'TU ',      c:'#FFFFFF'},
-        {t:'CUERPO ',  c:'#FFD400'},
-        {t:'LIBERA ',  c:'#EC1587'},
-        {t:'TU ',      c:'#FFFFFF'},
-        {t:'MENTE',    c:'#29ABE2'},
-      ];
-      ctx.font = 'bold 20px "Bebas Neue", sans-serif';
-      const totalW = palabras.reduce((s,p)=>s+ctx.measureText(p.t).width,0);
-      let px = W/2 - totalW/2;
-      ctx.textAlign = 'left';
-      palabras.forEach(p => {
-        ctx.fillStyle = p.c;
-        ctx.fillText(p.t, px, footY+102);
-        px += ctx.measureText(p.t).width;
-      });
-      ctx.textAlign = 'center';
-    })();
-
     // botón descarga
     const btn = document.getElementById('btnDescargarRecibo');
     if (btn) {
@@ -8533,16 +8535,17 @@ function generarReciboCanvas(pago) {
     }
   }; // end draw()
 
-  // Cargar logo y dibujar
+  // Cargar logo + fuente "Luckiest Guy", y hasta entonces dibujar
   const logoSrc = document.querySelector('img[alt="JOMAC"]')?.src || null;
-  if (logoSrc) {
+  const cargarLogo = new Promise(resolve => {
+    if (!logoSrc) { resolve(null); return; }
     const img = new Image();
-    img.onload  = () => draw(img);
-    img.onerror = () => draw(null);
+    img.onload  = () => resolve(img);
+    img.onerror = () => resolve(null);
     img.src = logoSrc;
-  } else {
-    draw(null);
-  }
+  });
+  const cargarFuente = document.fonts.load('900 52px "Luckiest Guy"').catch(()=>{});
+  Promise.all([cargarLogo, cargarFuente]).then(([img]) => draw(img));
 }
 
 function roundRect(ctx, x, y, w, h, r) {
