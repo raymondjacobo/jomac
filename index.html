@@ -8482,22 +8482,33 @@ function generarReciboCanvas(pago) {
     // ══════════════════════════════════════
     (() => {
       const lineas = [
-        [ {t:'ENTRENA ', c:'#EC1587'}, {t:'TU ', c:'#111111'}, {t:'CUERPO', c:'#FFD400'} ],
-        [ {t:'LIBERA ',  c:'#EC1587'}, {t:'TU ', c:'#111111'}, {t:'MENTE', c:'#29ABE2'} ],
+        [ {t:'ENTRENA', c:'#EC1587'}, {t:'TU', c:'#111111'}, {t:'CUERPO', c:'#FFD400'} ],
+        [ {t:'LIBERA',  c:'#EC1587'}, {t:'TU', c:'#111111'}, {t:'MENTE', c:'#29ABE2'} ],
       ];
       const sloganY = totY + 160;
-      const lineH = 60;
+      const lineH = 64;
+      const gap = 4;
       ctx.font = '900 52px "Luckiest Guy", sans-serif';
+      ctx.lineJoin = 'round';
       lineas.forEach((linea, i) => {
-        const totalW = linea.reduce((s,p)=>s+ctx.measureText(p.t).width,0);
+        const totalW = linea.reduce((s,p)=>s+ctx.measureText(p.t).width,0) + gap*(linea.length-1);
         let px = W/2 - totalW/2;
         ctx.textAlign = 'left';
         linea.forEach(p => {
+          // brillo de color detrás
+          ctx.shadowColor = p.c;
+          ctx.shadowBlur = 16;
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#000';
+          ctx.strokeText(p.t, px, sloganY + i*lineH);
+          // relleno de color encima
+          ctx.shadowBlur = 0;
           ctx.fillStyle = p.c;
           ctx.fillText(p.t, px, sloganY + i*lineH);
-          px += ctx.measureText(p.t).width;
+          px += ctx.measureText(p.t).width + gap;
         });
       });
+      ctx.shadowBlur = 0;
       ctx.textAlign = 'center';
     })();
 
