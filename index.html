@@ -1689,6 +1689,12 @@
           <div class="table-title" id="cajaTitleFecha">HOY</div>
           <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
             <input type="date" id="cajaFecha" onchange="renderCaja()" style="border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;font-family:var(--font-cond);font-size:.85rem;"/>
+            <select id="cajaMetodo" onchange="renderCaja()" style="border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;font-family:var(--font-cond);font-size:.85rem;">
+              <option value="">TODOS LOS MÉTODOS</option>
+              <option value="efectivo">💵 Efectivo</option>
+              <option value="transferencia">🏦 Transferencia</option>
+              <option value="tarjeta">💳 Tarjeta</option>
+            </select>
           </div>
         </div>
         <table>
@@ -5262,11 +5268,16 @@ function nombreCategoriaMov(categoriaId, tipo) {
 
 function renderCaja() {
   const fecha = document.getElementById('cajaFecha')?.value || fmtDate(new Date());
+  const metodoFiltro = document.getElementById('cajaMetodo')?.value || '';
   const titulo = document.getElementById('cajaTitleFecha');
   if (titulo) titulo.textContent = formatDateNice(fecha);
 
-  const movimientos = DB.get('movimientos',[]).filter(m => m.fecha === fecha);
-  const pagos = DB.get('payments',[]).filter(p => limpiarFecha(p.fechaPago) === fecha);
+  let movimientos = DB.get('movimientos',[]).filter(m => m.fecha === fecha);
+  let pagos = DB.get('payments',[]).filter(p => limpiarFecha(p.fechaPago) === fecha);
+  if (metodoFiltro) {
+    movimientos = movimientos.filter(m => (m.metodo||'').toLowerCase() === metodoFiltro);
+    pagos = pagos.filter(p => (p.metodo||'').toLowerCase() === metodoFiltro);
+  }
 
   const ingresosMensualidades = pagos.reduce((s,p)=>s+Number(p.monto||0),0);
   const ingresosVentas  = movimientos.filter(m=>m.tipo==='ingreso').reduce((s,m)=>s+Number(m.monto||0),0);
