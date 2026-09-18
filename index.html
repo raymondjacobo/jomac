@@ -1695,6 +1695,9 @@
               <option value="transferencia">🏦 Transferencia</option>
               <option value="tarjeta">💳 Tarjeta</option>
             </select>
+            <select id="cajaCategoria" onchange="renderCaja()" style="border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;font-family:var(--font-cond);font-size:.85rem;max-width:220px;">
+              <option value="">TODAS LAS CATEGORÍAS</option>
+            </select>
           </div>
         </div>
         <table>
@@ -5269,14 +5272,39 @@ function nombreCategoriaMov(categoriaId, tipo) {
 function renderCaja() {
   const fecha = document.getElementById('cajaFecha')?.value || fmtDate(new Date());
   const metodoFiltro = document.getElementById('cajaMetodo')?.value || '';
+  const catSelect = document.getElementById('cajaCategoria');
+  const catFiltro = catSelect?.value || '';
   const titulo = document.getElementById('cajaTitleFecha');
   if (titulo) titulo.textContent = formatDateNice(fecha);
+
+  // Poblar select de categorías, conservando la selección actual
+  if (catSelect) {
+    const seleccionActual = catSelect.value;
+    const catsIng = getCats('ing');
+    const catsEgr = getCats('egr');
+    catSelect.innerHTML = '<option value="">TODAS LAS CATEGORÍAS</option>'
+      + '<option value="membresia">💳 Membresía</option>'
+      + (catsIng.length ? `<optgroup label="Ingresos">${catsIng.map(c=>`<option value="ing:${c.id}">${c.icon} ${c.nombre}</option>`).join('')}</optgroup>` : '')
+      + (catsEgr.length ? `<optgroup label="Egresos">${catsEgr.map(c=>`<option value="egr:${c.id}">${c.icon} ${c.nombre}</option>`).join('')}</optgroup>` : '');
+    catSelect.value = seleccionActual;
+  }
 
   let movimientos = DB.get('movimientos',[]).filter(m => m.fecha === fecha);
   let pagos = DB.get('payments',[]).filter(p => limpiarFecha(p.fechaPago) === fecha);
   if (metodoFiltro) {
     movimientos = movimientos.filter(m => (m.metodo||'').toLowerCase() === metodoFiltro);
     pagos = pagos.filter(p => (p.metodo||'').toLowerCase() === metodoFiltro);
+  }
+  if (catFiltro === 'membresia') {
+    movimientos = [];
+  } else if (catFiltro.startsWith('ing:')) {
+    const catId = catFiltro.slice(4);
+    movimientos = movimientos.filter(m => m.tipo==='ingreso' && m.categoria===catId);
+    pagos = [];
+  } else if (catFiltro.startsWith('egr:')) {
+    const catId = catFiltro.slice(4);
+    movimientos = movimientos.filter(m => m.tipo==='egreso' && m.categoria===catId);
+    pagos = [];
   }
 
   const ingresosMensualidades = pagos.reduce((s,p)=>s+Number(p.monto||0),0);
@@ -5321,9 +5349,64 @@ function renderCaja() {
 
   if (!filasMens && !filasMovs) {
     tbody.innerHTML = `<tr><td colspan="7"><div class="no-data">Sin movimientos este día</div></td></tr>`;
-  } else {
-    tbody.innerHTML = filasMens + filasMovs;
+    return;
   }
+
+  // Acumulado de ventas (ingresos: mensualidades + ventas) por método de pago
+  const ingresosTotales = [
+    ...pagos.map(p=>({metodo:(p.metodo||'efectivo').toLowerCase(), monto:Number(p.monto||0)})),
+    ...movimientos.filter(m=>m.tipo==='ingreso').map(m=>({metodo:(m.metodo||'efectivo').toLowerCase(), monto:Number(m.monto||0)}))
+  ];
+  const totEfectivo = ingresosTotales.filter(x=>x.metodo==='efectivo').reduce((s,x)=>s+x.monto,0);
+  const totTransferencia = ingresosTotales.filter(x=>x.metodo==='transferencia').reduce((s,x)=>s+x.monto,0);
+  const totTarjeta = ingresosTotales.filter(x=>x.metodo==='tarjeta').reduce((s,x)=>s+x.monto,0);
+  const totAcumulado = totEfectivo + totTransferencia + totTarjeta;
+
+  const filasAcumulado = `
+    <tr style="border-top:2px solid var(--border);background:#f9f9f9;">
+      <td colspan="7" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO DE VENTAS POR MÉTODO DE PAGO</td>
+    </tr>
+    ${totEfectivo>0?`<tr style="background:#f9f9f9;">
+      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">💵 Efectivo</span><span style="font-family:var(--font-display);font-size:1rem;">$${totEfectivo.toLocaleString('es-MX')}</span></div></td>
+      <td></td>
+    </tr>`:''}
+    ${totTransferencia>0?`<tr style="background:#f9f9f9;">
+      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">🏦 Transferencia</span><span style="font-family:var(--font-display);font-size:1rem;">$${totTransferencia.toLocaleString('es-MX')}</span></div></td>
+      <td></td>
+    </tr>`:''}
+    ${totTarjeta>0?`<tr style="background:#f9f9f9;">
+      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">💳 Tarjeta</span><span style="font-family:var(--font-display);font-size:1rem;">$${totTarjeta.toLocaleString('es-MX')}</span></div></td>
+      <td></td>
+    </tr>`:''}
+    <tr style="background:#fff3f3;border-top:2px solid var(--red);">
+      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--red);min-width:140px;">TOTAL</span><span style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--red);">$${totAcumulado.toLocaleString('es-MX')}</span></div></td>
+      <td></td>
+    </tr>`;
+
+  // Acumulado de ventas por categoría
+  const categoriaTotales = {};
+  pagos.forEach(p => {
+    categoriaTotales['💳 Membresía'] = (categoriaTotales['💳 Membresía']||0) + Number(p.monto||0);
+  });
+  movimientos.filter(m=>m.tipo==='ingreso').forEach(m => {
+    const nombre = nombreCategoriaMov(m.categoria, 'ingreso');
+    categoriaTotales[nombre] = (categoriaTotales[nombre]||0) + Number(m.monto||0);
+  });
+  const totCategorias = Object.values(categoriaTotales).reduce((s,v)=>s+v,0);
+  const filasAcumuladoCat = Object.keys(categoriaTotales).length ? `
+    <tr style="border-top:2px solid var(--border);background:#f9f9f9;">
+      <td colspan="7" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO DE VENTAS POR CATEGORÍA</td>
+    </tr>
+    ${Object.entries(categoriaTotales).map(([nombre,monto])=>`<tr style="background:#f9f9f9;">
+      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">${nombre}</span><span style="font-family:var(--font-display);font-size:1rem;">$${monto.toLocaleString('es-MX')}</span></div></td>
+      <td></td>
+    </tr>`).join('')}
+    <tr style="background:#fff3f3;border-top:2px solid var(--red);">
+      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--red);min-width:140px;">TOTAL</span><span style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--red);">$${totCategorias.toLocaleString('es-MX')}</span></div></td>
+      <td></td>
+    </tr>` : '';
+
+  tbody.innerHTML = filasMens + filasMovs + filasAcumulado + filasAcumuladoCat;
 }
 
 /* ─── Helper: arma <option>s de productos agrupados por categoría (optgroup) ─── */
