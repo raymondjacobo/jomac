@@ -5406,7 +5406,12 @@ function renderCaja() {
       <td></td>
     </tr>` : '';
 
-  tbody.innerHTML = filasMens + filasMovs + filasAcumulado + filasAcumuladoCat;
+  const filaDetalleTitulo = (filasMens || filasMovs) ? `
+    <tr style="border-top:2px solid var(--border);">
+      <td colspan="7" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">DETALLE DE MOVIMIENTOS</td>
+    </tr>` : '';
+
+  tbody.innerHTML = filasAcumulado + filasAcumuladoCat + filaDetalleTitulo + filasMens + filasMovs;
 }
 
 /* ─── Helper: arma <option>s de productos agrupados por categoría (optgroup) ─── */
