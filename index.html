@@ -1746,6 +1746,7 @@
       <div class="kpi-grid" id="rfKpis" style="margin-bottom:1.5rem;"></div>
       <div style="display:grid;grid-template-columns:1fr;gap:1rem;margin-bottom:1.5rem;" id="rfTablas"></div>
       <div id="rfDetalleDia"></div>
+      <div id="rfIngresosMesTipo" style="margin-top:1.5rem;"></div>
     </div>
 
   </div>
@@ -5827,6 +5828,88 @@ function renderReporteFinanciero() {
       `;
     }
   }
+
+  renderIngresosPorMesTipo(anio, movimientos, pagos);
+}
+
+// Matriz de Ingresos por Mes y Tipo: meses hacia abajo, tipos de ingreso hacia la derecha, con acumulados
+function renderIngresosPorMesTipo(anio, movimientos, pagos) {
+  const wrap = document.getElementById('rfIngresosMesTipo');
+  if (!wrap) return;
+
+  // Normaliza categorías legacy: movimientos antiguos guardaban categoria:'ventas' (texto plano);
+  // los nuevos usan el id real del catálogo (ej. 'i1'). Se unifican bajo el id real para no duplicar columnas.
+  const catVentasId = (getCats('ing').find(c => /ventas/i.test(c.nombre||''))||{}).id || 'i1';
+  const normCategoria = (cat) => (cat === 'ventas') ? catVentasId : (cat || '—');
+
+  // Detectar todos los tipos de ingreso que aparecen en el año (categorías de movimientos tipo ingreso)
+  const tiposSet = new Set();
+  const movsAnio = movimientos.filter(m => m.tipo==='ingreso' && m.fecha && m.fecha.startsWith(anio));
+  movsAnio.forEach(m => tiposSet.add(normCategoria(m.categoria)));
+  const pagosAnio = pagos.filter(p => limpiarFecha(p.fechaPago) && limpiarFecha(p.fechaPago).startsWith(anio));
+  const hayMensualidades = pagosAnio.length > 0;
+
+  // Orden de columnas: Mensualidades primero (si aplica), luego el resto por nombre
+  const tiposOrdenados = Array.from(tiposSet).sort((a,b)=> nombreCategoriaMov(a,'ingreso').localeCompare(nombreCategoriaMov(b,'ingreso')));
+  const columnas = (hayMensualidades ? ['__mensualidades__'] : []).concat(tiposOrdenados);
+
+  if (!columnas.length) {
+    wrap.innerHTML = `
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">📊 INGRESOS POR MES Y TIPO — ${anio}</div></div>
+        <div style="text-align:center;color:var(--text-light);padding:1.5rem;">Sin ingresos registrados en ${anio}</div>
+      </div>`;
+    return;
+  }
+
+  const nombreCol = (c) => c==='__mensualidades__' ? 'Mensualidades' : nombreCategoriaMov(c,'ingreso');
+
+  // Matriz [mesIdx][columna] = monto
+  const matriz = NOMBRES_MESES.map(()=> ({}));
+  columnas.forEach(c => matriz.forEach(fila => fila[c]=0));
+
+  pagosAnio.forEach(p => {
+    const f = limpiarFecha(p.fechaPago);
+    const mIdx = parseInt(f.substring(5,7),10)-1;
+    if (mIdx>=0 && mIdx<12) matriz[mIdx]['__mensualidades__'] = (matriz[mIdx]['__mensualidades__']||0) + Number(p.monto||0);
+  });
+  movsAnio.forEach(m => {
+    const mIdx = parseInt(m.fecha.substring(5,7),10)-1;
+    const cat = normCategoria(m.categoria);
+    if (mIdx>=0 && mIdx<12) matriz[mIdx][cat] = (matriz[mIdx][cat]||0) + Number(m.monto||0);
+  });
+
+  const totalCol = {}; columnas.forEach(c=>totalCol[c]=0);
+  let totalGeneral = 0;
+  const filasHTML = matriz.map((fila, i) => {
+    const totalFila = columnas.reduce((s,c)=>s+(fila[c]||0),0);
+    if (totalFila === 0) return ''; // ocultar meses sin movimientos para no saturar la tabla
+    totalGeneral += totalFila;
+    columnas.forEach(c => totalCol[c] += (fila[c]||0));
+    return `<tr>
+      <td style="font-weight:700;">${NOMBRES_MESES[i]}</td>
+      ${columnas.map(c => `<td style="font-family:var(--font-display);color:${(fila[c]||0)>0?'#16A34A':'var(--text-light)'};">$${(fila[c]||0).toLocaleString('es-MX')}</td>`).join('')}
+      <td style="font-family:var(--font-display);font-weight:700;color:#16A34A;">$${totalFila.toLocaleString('es-MX')}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="table-wrap">
+      <div class="table-header"><div class="table-title">📊 INGRESOS POR MES Y TIPO — ${anio}</div></div>
+      <div style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>MES</th>${columnas.map(c=>`<th>${nombreCol(c)}</th>`).join('')}<th>TOTAL</th></tr></thead>
+        <tbody>
+          ${filasHTML || `<tr><td colspan="${columnas.length+2}" style="text-align:center;color:var(--text-light);">Sin ingresos registrados en ${anio}</td></tr>`}
+          <tr style="border-top:2px solid var(--border);font-weight:700;">
+            <td>TOTAL</td>
+            ${columnas.map(c=>`<td style="font-family:var(--font-display);color:#16A34A;">$${totalCol[c].toLocaleString('es-MX')}</td>`).join('')}
+            <td style="font-family:var(--font-display);color:#16A34A;">$${totalGeneral.toLocaleString('es-MX')}</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>`;
 }
 
 // ════════════════════════════════════════════════════════════════
