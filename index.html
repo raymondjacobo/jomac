@@ -1041,7 +1041,7 @@
       <!-- Vencimientos -->
       <div class="table-wrap">
         <div class="table-header">
-          <div class="table-title">⏰ PRÓXIMOS VENCIMIENTOS</div>
+          <div class="table-title">⏰ VENCIMIENTOS (±8 DÍAS)</div>
           <button class="btn-secondary" onclick="exportVencimientosPDF()" style="font-size:.78rem;padding:.4rem .9rem;display:flex;align-items:center;gap:.4rem;">
             <span>📄</span> PDF / WhatsApp
           </button>
@@ -2823,24 +2823,25 @@ function loadDashboard() {
       <td><span class="badge badge-green">ACTIVO</span></td>
     </tr>`).join('') : `<tr><td colspan="4" class="no-data">Sin asistencias hoy</td></tr>`;
 
-  // Expiring
+  // Expiring: vencidos hasta 8 días atrás + próximos a vencer hasta 8 días adelante
   const expBody = document.getElementById('expiringTable');
   const exp = payments.filter(p => {
     const fin = new Date(String(p.fechaFin).substring(0,10)+'T00:00:00');
     const now = new Date(); now.setHours(0,0,0,0);
     const diff = Math.ceil((fin-now)/(1000*60*60*24));
-    return diff >= 0 && diff <= 7 && p.activo;
+    return diff >= -8 && diff <= 8 && p.activo;
   }).sort((a,b)=>new Date(limpiarFecha(a.fechaFin))-new Date(limpiarFecha(b.fechaFin)));
   expBody.innerHTML = exp.length ? exp.map(p => {
     const diff = Math.ceil((new Date(limpiarFecha(p.fechaFin)+'T00:00:00') - new Date().setHours(0,0,0,0))/(1000*60*60*24));
-    const cls  = diff <= 1 ? 'badge-red' : diff <= 3 ? 'badge-yellow' : 'badge-green';
+    const cls   = diff < 0 ? 'badge-red' : diff <= 1 ? 'badge-red' : diff <= 3 ? 'badge-yellow' : 'badge-green';
+    const label = diff < 0 ? `VENCIÓ ${Math.abs(diff)}D` : diff===0 ? 'HOY' : diff+'d';
     return `<tr>
       <td>${p.memberName}</td>
       <td>${planBadge(p.plan)}</td>
       <td style="font-family:var(--font-cond);color:var(--text-light);">${formatDateNice(p.fechaFin)}</td>
-      <td><span class="badge ${cls}">${diff===0?'HOY':diff+'d'}</span></td>
+      <td><span class="badge ${cls}">${label}</span></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="4" class="no-data">Sin vencimientos próximos</td></tr>`;
+  }).join('') : `<tr><td colspan="4" class="no-data">Sin vencimientos en este rango</td></tr>`;
 }
 
 // ════════════════════════════════════
@@ -3330,10 +3331,10 @@ function exportVencimientosPDF() {
   const exp = payments.filter(p => {
     const fin = new Date(String(p.fechaFin).substring(0,10)+'T00:00:00');
     const diff = Math.ceil((fin - now) / (1000*60*60*24));
-    return diff >= 0 && diff <= 7 && p.activo;
+    return diff >= -8 && diff <= 8 && p.activo;
   }).sort((a,b) => new Date(limpiarFecha(a.fechaFin)) - new Date(limpiarFecha(b.fechaFin)));
 
-  if (!exp.length) { toast('No hay vencimientos próximos','warning'); return; }
+  if (!exp.length) { toast('No hay vencimientos en este rango','warning'); return; }
 
   const fechaHoy = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
 
@@ -3365,7 +3366,7 @@ function exportVencimientosPDF() {
     doc.text('JOMAC ENTRENAMIENTO FUNCIONAL', 56, 14);
     doc.setFontSize(8);
     doc.setFont('helvetica','normal');
-    doc.text('MEMBRESÍAS PRÓXIMAS A VENCER — 7 DÍAS', 56, 21);
+    doc.text('MEMBRESÍAS VENCIDAS Y PRÓXIMAS A VENCER (±8 DÍAS)', 56, 21);
     doc.text('Fecha: '+fechaHoy, 56, 27);
 
     // Línea blanca bajo header
@@ -3393,7 +3394,7 @@ function exportVencimientosPDF() {
     exp.forEach((p, idx) => {
       const fin  = new Date(limpiarFecha(p.fechaFin)+'T00:00:00');
       const diff = Math.ceil((fin - new Date().setHours(0,0,0,0)) / (1000*60*60*24));
-      const diasLabel = diff === 0 ? 'HOY' : diff + ' día(s)';
+      const diasLabel = diff < 0 ? `VENCIÓ ${Math.abs(diff)} día(s)` : diff === 0 ? 'HOY' : diff + ' día(s)';
 
       if (idx % 2 === 0) {
         doc.setFillColor(252,252,252);
@@ -3406,7 +3407,7 @@ function exportVencimientosPDF() {
       doc.text(p.plan.toUpperCase(), cols[1], y);
       doc.text(formatDateNice(p.fechaFin), cols[2], y);
 
-      const badgeColor = diff <= 1 ? rojo : diff <= 3 ? [202,138,4] : [21,128,61];
+      const badgeColor = diff < 0 ? rojo : diff <= 1 ? rojo : diff <= 3 ? [202,138,4] : [21,128,61];
       doc.setTextColor(...badgeColor);
       doc.setFont('helvetica','bold');
       doc.text(diasLabel, cols[3], y);
