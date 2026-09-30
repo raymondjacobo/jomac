@@ -1187,7 +1187,12 @@
         <button class="btn-primary" onclick="openModal('modalNuevoPago')">+ REGISTRAR PAGO</button>
       </div>
 
-      <div class="kpi-grid">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem;">
+        <button class="btn-secondary" id="btnTogglePagosKpis" onclick="togglePagosKpis()" style="font-size:.75rem;padding:.35rem .8rem;display:flex;align-items:center;gap:.4rem;">
+          <span id="iconTogglePagosKpis">▼</span> <span id="textTogglePagosKpis">MOSTRAR RESUMEN</span>
+        </button>
+      </div>
+      <div class="kpi-grid" id="pagosKpisWrap" style="display:none;">
         <div class="kpi-card green">
           <div class="kpi-label">INGRESOS HOY</div>
           <div class="kpi-value" id="kpiPagosHoy">$0</div>
@@ -2686,7 +2691,7 @@ function navigateTo(id) {
   // load page data
   if (id==='dashboard')  { loadDashboard(); renderChartAsistencias(); renderChartDiario(); }
   if (id==='miembros')   renderMiembros();
-  if (id==='pagos')      { renderPagos(); loadPagoKPIs(); }
+  if (id==='pagos')      { renderPagos(); loadPagoKPIs(); aplicarEstadoPagosKpis(DB.get('pagosKpisVisible', false)); }
   if (id==='asistencia') { setTodayFilter(); setTimeout(renderAsistencia, 0); }
   if (id==='horarios')   { renderHorarios(); populateHInstructorSelect(); }
   if (id==='instructores') renderInstructores();
@@ -4286,6 +4291,23 @@ function loadPagoKPIs() {
   document.getElementById('kpiPagosHoy').textContent  = '$'+hoy.toLocaleString();
   document.getElementById('kpiPagosMes').textContent  = '$'+mes.toLocaleString();
   document.getElementById('kpiPagosTotal').textContent= payments.length;
+}
+
+// Mostrar/ocultar el resumen de KPIs en Pagos, a elección del usuario (se recuerda por dispositivo)
+// Oculto por default; el usuario decide mostrarlo, y esa elección se recuerda en este dispositivo.
+function togglePagosKpis() {
+  const visible = DB.get('pagosKpisVisible', false);
+  aplicarEstadoPagosKpis(!visible);
+  DB.set('pagosKpisVisible', !visible);
+}
+function aplicarEstadoPagosKpis(visible) {
+  const wrap = document.getElementById('pagosKpisWrap');
+  const icon = document.getElementById('iconTogglePagosKpis');
+  const text = document.getElementById('textTogglePagosKpis');
+  if (!wrap) return;
+  wrap.style.display = visible ? '' : 'none';
+  if (icon) icon.textContent = visible ? '▲' : '▼';
+  if (text) text.textContent = visible ? 'OCULTAR RESUMEN' : 'MOSTRAR RESUMEN';
 }
 
 // ════════════════════════════════════
