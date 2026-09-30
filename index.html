@@ -2439,6 +2439,13 @@ let currentUser = null; // {type:'admin'|'member', data:...}
 let currentTab = 'admin';
 let loginPin = '';
 let checkinPin = '';
+
+// Instructor con especialidad exactamente "Instructor" (no el dueño/admin con otra especialidad):
+// acceso restringido a datos del día actual en Finanzas, Dashboard y todo lo que muestre importes de pagos.
+function esInstructorLimitado() {
+  return !!(currentUser && currentUser.type === 'instructor' && currentUser.data &&
+    String(currentUser.data.especialidad||'').trim().toLowerCase() === 'instructor');
+}
 let editingMemberId = null;
 let selectedPlan = null;
 let mnSelectedPlan = null;
@@ -2773,8 +2780,14 @@ function loadDashboard() {
   const elAnioSub = document.getElementById('kpiAnioSub');
   if (elAnioSub) elAnioSub.textContent = anioActual === new Date().getFullYear() ? 'Año en curso' : 'Año '+anioActual;
 
+  const limitado = esInstructorLimitado();
+
   const elMes = document.getElementById('kpiIngresosMes');
   if (elMes) elMes.textContent = '$'+ingrMes.toLocaleString();
+  const cardIngresosMes = elMes?.closest('.kpi-card');
+  if (cardIngresosMes) cardIngresosMes.style.display = limitado ? 'none' : '';
+  const cardIngresosAnio = document.getElementById('kpiIngresosAnio')?.closest('.kpi-card');
+  if (cardIngresosAnio) cardIngresosAnio.style.display = limitado ? 'none' : '';
 
   // KPI Ventas del módulo Finanzas (independiente de mensualidades)
   const kpiVentasCard = document.getElementById('kpiVentasCard');
@@ -2786,7 +2799,7 @@ function loadDashboard() {
     if (finanzasActivoDash) {
       const movimientos = DB.get('movimientos', []);
       if (kpiVentasCard) {
-        kpiVentasCard.style.display = '';
+        kpiVentasCard.style.display = limitado ? 'none' : '';
         const ventasMes = movimientos
           .filter(mv => mv.tipo === 'ingreso' && limpiarFecha(mv.fecha).substring(0,7) === thisMonth)
           .reduce((s,mv) => s + Number(mv.monto||0), 0);
@@ -4185,7 +4198,11 @@ function savePago() {
 
 function renderPagos() {
   const q        = (document.getElementById('searchPagos')?.value||'').toLowerCase();
-  const payments = DB.get('payments', []);
+  let payments = DB.get('payments', []);
+  if (esInstructorLimitado()) {
+    const hoy = fmtDate(new Date());
+    payments = payments.filter(p => limpiarFecha(p.fechaPago) === hoy);
+  }
   const filtered = payments.filter(p =>
     p.memberName.toLowerCase().includes(q) || p.plan.includes(q) || (p.metodo||'').includes(q)
   ).reverse();
@@ -4287,11 +4304,15 @@ function loadPagoKPIs() {
   const today    = fmtDate(new Date());
   const thisMonth= today.slice(0,7);
   const payments = DB.get('payments', []);
-  const hoy  = payments.filter(p=>limpiarFecha(p.fechaPago)===today).reduce((s,p)=>s+Number(p.monto),0);
-  const mes  = payments.filter(p=>limpiarFecha(p.fechaPago).substring(0,7)===thisMonth).reduce((s,p)=>s+Number(p.monto),0);
+  const limitado = esInstructorLimitado();
+  const pagosHoy = payments.filter(p=>limpiarFecha(p.fechaPago)===today);
+  const hoy  = pagosHoy.reduce((s,p)=>s+Number(p.monto),0);
+  const mes  = limitado ? hoy : payments.filter(p=>limpiarFecha(p.fechaPago).substring(0,7)===thisMonth).reduce((s,p)=>s+Number(p.monto),0);
   document.getElementById('kpiPagosHoy').textContent  = '$'+hoy.toLocaleString();
   document.getElementById('kpiPagosMes').textContent  = '$'+mes.toLocaleString();
-  document.getElementById('kpiPagosTotal').textContent= payments.length;
+  document.getElementById('kpiPagosTotal').textContent= limitado ? pagosHoy.length : payments.length;
+  const cardMes = document.getElementById('kpiPagosMes')?.closest('.kpi-card');
+  if (cardMes) cardMes.style.display = limitado ? 'none' : '';
 }
 
 // Mostrar/ocultar el resumen de KPIs en Pagos, a elección del usuario (se recuerda por dispositivo)
@@ -5294,6 +5315,13 @@ function nombreCategoriaMov(categoriaId, tipo) {
 }
 
 function renderCaja() {
+  const cajaFechaInput = document.getElementById('cajaFecha');
+  if (esInstructorLimitado() && cajaFechaInput) {
+    cajaFechaInput.value = fmtDate(new Date());
+    cajaFechaInput.disabled = true;
+  } else if (cajaFechaInput) {
+    cajaFechaInput.disabled = false;
+  }
   const fecha = document.getElementById('cajaFecha')?.value || fmtDate(new Date());
   const metodoFiltro = document.getElementById('cajaMetodo')?.value || '';
   const catSelect = document.getElementById('cajaCategoria');
@@ -5738,13 +5766,20 @@ function eliminarMovimiento(id) {
 
 // ── REPORTE FINANCIERO ──
 function renderReporteFinanciero() {
-  const tipo = document.getElementById('rfTipo')?.value || 'mes';
+  const limitado = esInstructorLimitado();
+  const tipoSel = document.getElementById('rfTipo');
+  const diaInput = document.getElementById('rfDia');
+  if (limitado) {
+    if (tipoSel) { tipoSel.value = 'dia'; tipoSel.disabled = true; }
+    if (diaInput) { diaInput.value = fmtDate(new Date()); diaInput.disabled = true; }
+  } else if (tipoSel) { tipoSel.disabled = false; if (diaInput) diaInput.disabled = false; }
+
+  const tipo = tipoSel?.value || 'mes';
   const mes  = document.getElementById('rfMes')?.value  || '07';
   const anio = document.getElementById('rfAnio')?.value || '2026';
   const diaWrap = document.getElementById('rfDiaWrap');
   const mesWrap = document.getElementById('rfMesWrap');
   const anioWrap = document.getElementById('rfAnioWrap');
-  const diaInput = document.getElementById('rfDia');
   if (diaInput && !diaInput.value) diaInput.value = fmtDate(new Date());
   const diaSel = diaInput?.value || fmtDate(new Date());
 
@@ -5852,7 +5887,12 @@ function renderReporteFinanciero() {
     }
   }
 
-  renderIngresosPorMesTipo(anio, movimientos, pagos);
+  if (limitado) {
+    const wrap = document.getElementById('rfIngresosMesTipo');
+    if (wrap) wrap.innerHTML = '';
+  } else {
+    renderIngresosPorMesTipo(anio, movimientos, pagos);
+  }
 }
 
 // Matriz de Ingresos por Mes y Tipo: meses hacia abajo, tipos de ingreso hacia la derecha, con acumulados
@@ -7231,10 +7271,18 @@ function compartirCredencialWA() {
 // REPORTE DE PAGOS
 // ════════════════════════════════════════════
 function renderReportePagos() {
-  const tipo  = document.getElementById('rpTipo')?.value || 'mes';
+  const limitadoRP = esInstructorLimitado();
+  const rpTipoSel = document.getElementById('rpTipo');
+  const rpFechaDiaInput = document.getElementById('rpFechaDia');
+  if (limitadoRP) {
+    if (rpTipoSel) { rpTipoSel.value = 'dia'; rpTipoSel.disabled = true; }
+    if (rpFechaDiaInput) { rpFechaDiaInput.value = fmtDate(new Date()); rpFechaDiaInput.disabled = true; }
+  } else if (rpTipoSel) { rpTipoSel.disabled = false; if (rpFechaDiaInput) rpFechaDiaInput.disabled = false; }
+
+  const tipo  = rpTipoSel?.value || 'mes';
   const anio  = document.getElementById('rpAnio')?.value || new Date().getFullYear();
   const mes   = document.getElementById('rpMes')?.value || String(new Date().getMonth()+1).padStart(2,'0');
-  const fecha = document.getElementById('rpFechaDia')?.value || fmtDate(new Date());
+  const fecha = rpFechaDiaInput?.value || fmtDate(new Date());
 
   // Mostrar/ocultar filtros
   const diaWrap = document.getElementById('rpFechaDiaWrap');
