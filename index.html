@@ -1220,7 +1220,7 @@
         </div>
         <table>
           <thead>
-            <tr><th>FECHA</th><th>MIEMBRO</th><th>PLAN</th><th>MONTO</th><th>MÉTODO</th><th>ESTADO</th></tr>
+            <tr><th>FECHA</th><th>MIEMBRO</th><th>PLAN</th><th>MONTO</th><th>MÉTODO</th><th>USUARIO</th><th>ESTADO</th></tr>
           </thead>
           <tbody id="tablaPagos"></tbody>
         </table>
@@ -1477,7 +1477,7 @@
           </div>
         </div>
         <table>
-          <thead><tr><th>FECHA</th><th>MIEMBRO</th><th>PLAN</th><th>PERIODO</th><th>MONTO</th><th>MÉTODO</th></tr></thead>
+          <thead><tr><th>FECHA</th><th>MIEMBRO</th><th>PLAN</th><th>PERIODO</th><th>MONTO</th><th>MÉTODO</th><th>USUARIO</th></tr></thead>
           <tbody id="rpTabla"></tbody>
         </table>
       </div>
@@ -1611,7 +1611,7 @@
       <input type="text" id="searchCreditos" placeholder="🔍 Buscar por miembro..." oninput="renderCreditos()" style="width:100%;max-width:320px;margin-bottom:1rem;border:1px solid var(--border);border-radius:8px;padding:.55rem .8rem;font-family:var(--font-body);font-size:.88rem;"/>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>FECHA</th><th>MIEMBRO</th><th>CONCEPTO</th><th>MONTO</th><th>ESTADO</th><th></th></tr></thead>
+          <thead><tr><th>FECHA</th><th>MIEMBRO</th><th>CONCEPTO</th><th>MONTO</th><th>USUARIO</th><th>ESTADO</th><th></th></tr></thead>
           <tbody id="tablaCreditos"></tbody>
         </table>
       </div>
@@ -1706,7 +1706,7 @@
           </div>
         </div>
         <table>
-          <thead><tr><th>FECHA</th><th>TIPO</th><th>CONCEPTO</th><th>CATEGORÍA</th><th>MONTO</th><th>MÉTODO</th><th></th></tr></thead>
+          <thead><tr><th>FECHA</th><th>TIPO</th><th>CONCEPTO</th><th>CATEGORÍA</th><th>MONTO</th><th>MÉTODO</th><th>USUARIO</th><th></th></tr></thead>
           <tbody id="tablaCaja"></tbody>
         </table>
       </div>
@@ -2445,6 +2445,14 @@ let checkinPin = '';
 function esInstructorLimitado() {
   return !!(currentUser && currentUser.type === 'instructor' && currentUser.data &&
     String(currentUser.data.especialidad||'').trim().toLowerCase() === 'instructor');
+}
+
+// Nombre del usuario que está haciendo la acción (para dejar registro de quién cobró/registró un movimiento)
+function nombreUsuarioActual() {
+  if (!currentUser) return 'Sistema';
+  if (currentUser.type === 'admin') return 'Admin';
+  if (currentUser.type === 'instructor') return currentUser.data?.nombre || currentUser.name || 'Instructor';
+  return currentUser.name || 'Usuario';
 }
 let editingMemberId = null;
 let selectedPlan = null;
@@ -3780,7 +3788,7 @@ function historialPagosHTML(id) {
       <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;border-bottom:1px solid var(--border);gap:.6rem;">
         <div>
           <div style="font-size:.85rem;text-transform:capitalize;">Mensualidad · ${p.plan}</div>
-          <div style="font-size:.72rem;color:var(--text-light);">Pagado: ${formatDateNice(p.fechaPago)} · ${p.metodo||''}</div>
+          <div style="font-size:.72rem;color:var(--text-light);">Pagado: ${formatDateNice(p.fechaPago)} · ${p.metodo||''}${p.registradoPor ? ' · Registró: '+p.registradoPor : ''}</div>
           ${periodoPagoTexto(p) ? `<div style="font-size:.72rem;color:#16A34A;font-weight:600;">${periodoPagoTexto(p)}</div>` : ''}
         </div>
         <div style="font-family:var(--font-display);">$${Number(p.monto||0).toLocaleString('es-MX')}</div>
@@ -4182,7 +4190,8 @@ function savePago() {
     fechaInicio: inicio,
     fechaFin: fmtDate(finDate),
     notas: document.getElementById('pagoNotas').value,
-    activo: true
+    activo: true,
+    registradoPor: nombreUsuarioActual()
   };
   const payments = DB.get('payments', []);
   payments.push(pago);
@@ -4208,7 +4217,7 @@ function renderPagos() {
   ).reverse();
 
   const tbody = document.getElementById('tablaPagos');
-  if (!filtered.length) { tbody.innerHTML=`<tr><td colspan="7"><div class="no-data"><div class="no-data-icon">💳</div>Sin pagos</div></td></tr>`; return; }
+  if (!filtered.length) { tbody.innerHTML=`<tr><td colspan="8"><div class="no-data"><div class="no-data-icon">💳</div>Sin pagos</div></td></tr>`; return; }
   tbody.innerHTML = filtered.map(p => {
     const diff  = Math.ceil((new Date(limpiarFecha(p.fechaFin)+'T00:00:00')-new Date().setHours(0,0,0,0))/(1000*60*60*24));
     const cls   = diff < 0 ? 'badge-red' : diff <= 3 ? 'badge-yellow' : 'badge-green';
@@ -4220,6 +4229,7 @@ function renderPagos() {
       <td>${planBadge(p.plan)}</td>
       <td style="font-family:var(--font-display);font-size:1.1rem;">$${Number(p.monto).toLocaleString()}</td>
       <td><span class="pay-icon">${icons[p.metodo]||'💵'} ${p.metodo}</span></td>
+      <td style="font-size:.78rem;color:var(--text-light);">${p.registradoPor||'—'}</td>
       <td><span class="badge ${cls}">${est}</span></td>
       <td style="display:flex;gap:.4rem;align-items:center;">
         <button onclick="mostrarReciboModal(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="
@@ -5166,13 +5176,14 @@ function renderCreditos() {
 
   const tbody = document.getElementById('tablaCreditos');
   if (!tbody) return;
-  if (!pendientes.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="no-data">🎉 Sin créditos pendientes</div></td></tr>`; return; }
+  if (!pendientes.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="no-data">🎉 Sin créditos pendientes</div></td></tr>`; return; }
   tbody.innerHTML = pendientes.slice().sort((a,b)=>a.fecha<b.fecha?1:-1).map(c=>`
     <tr>
       <td style="font-size:.82rem;color:var(--text-light);">${formatDateNice(c.fecha)}</td>
       <td style="font-weight:600;">${c.miembroNombre}</td>
       <td>${c.concepto}</td>
       <td style="font-family:var(--font-display);color:var(--red);">$${Number(c.monto||0).toLocaleString('es-MX')}</td>
+      <td style="font-size:.78rem;color:var(--text-light);">${c.registradoPor||'—'}</td>
       <td><span class="badge" style="background:#F4F5F7;color:var(--text);border:1px solid var(--border);">PENDIENTE</span></td>
       <td>
         <button class="btn-primary" style="padding:.3rem .8rem;font-size:.72rem;width:auto;background:#16A34A;border-color:#16A34A;" onclick="pagarCredito('${c.id}')">💰 REGISTRAR PAGO</button>
@@ -5253,6 +5264,7 @@ function confirmarPagoCredito(id) {
   c.estado = 'pagado';
   c.fechaPago = fechaPago;
   c.metodoPago = metodoPago; // método real con el que se cobró (puede diferir del método elegido en la venta)
+  c.pagadoPor = nombreUsuarioActual();
   DB.set('creditos', creditos);
 
   // Al pagarse, ahora sí se registra como ingreso real, con fecha del día de pago
@@ -5266,7 +5278,8 @@ function confirmarPagoCredito(id) {
     monto: c.monto,
     metodo: metodoPago,
     fecha: fechaPago,
-    notas: c.notas ? c.notas + ' · Venta original: '+formatDateNice(c.fecha) : 'Venta original: '+formatDateNice(c.fecha)
+    notas: c.notas ? c.notas + ' · Venta original: '+formatDateNice(c.fecha) : 'Venta original: '+formatDateNice(c.fecha),
+    registradoPor: nombreUsuarioActual()
   };
   const movimientos = DB.get('movimientos', []);
   movimientos.push(mov);
@@ -5385,6 +5398,7 @@ function renderCaja() {
     <td style="font-size:.78rem;color:var(--text-light);">Membresía</td>
     <td style="font-family:var(--font-display);color:#16A34A;">$${Number(p.monto||0).toLocaleString('es-MX')}</td>
     <td style="font-size:.8rem;">${p.metodo||'—'}</td>
+    <td style="font-size:.75rem;color:var(--text-light);">${p.registradoPor||'—'}</td>
     <td></td>
   </tr>`).join('');
 
@@ -5396,11 +5410,12 @@ function renderCaja() {
     <td style="font-size:.78rem;color:var(--text-light);">${nombreCategoriaMov(m.categoria, m.tipo)}</td>
     <td style="font-family:var(--font-display);color:${m.tipo==='ingreso'?'#16A34A':'#DC2626'};">$${Number(m.monto||0).toLocaleString('es-MX')}</td>
     <td style="font-size:.8rem;">${m.metodo||'—'}</td>
+    <td style="font-size:.75rem;color:var(--text-light);">${m.registradoPor||'—'}</td>
     <td><button onclick="eliminarMovimiento('${m.id}')" style="background:transparent;border:1px solid #FECACA;border-radius:4px;color:var(--red);cursor:pointer;padding:.25rem .4rem;font-size:.75rem;">🗑</button></td>
   </tr>`).join('');
 
   if (!filasMens && !filasMovs) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="no-data">Sin movimientos este día</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="no-data">Sin movimientos este día</div></td></tr>`;
     return;
   }
 
@@ -5416,22 +5431,22 @@ function renderCaja() {
 
   const filasAcumulado = `
     <tr style="border-top:2px solid var(--border);background:#f9f9f9;">
-      <td colspan="7" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO DE VENTAS POR MÉTODO DE PAGO</td>
+      <td colspan="8" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO DE VENTAS POR MÉTODO DE PAGO</td>
     </tr>
     ${totEfectivo>0?`<tr style="background:#f9f9f9;">
-      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">💵 Efectivo</span><span style="font-family:var(--font-display);font-size:1rem;">$${totEfectivo.toLocaleString('es-MX')}</span></div></td>
+      <td colspan="7"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">💵 Efectivo</span><span style="font-family:var(--font-display);font-size:1rem;">$${totEfectivo.toLocaleString('es-MX')}</span></div></td>
       <td></td>
     </tr>`:''}
     ${totTransferencia>0?`<tr style="background:#f9f9f9;">
-      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">🏦 Transferencia</span><span style="font-family:var(--font-display);font-size:1rem;">$${totTransferencia.toLocaleString('es-MX')}</span></div></td>
+      <td colspan="7"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">🏦 Transferencia</span><span style="font-family:var(--font-display);font-size:1rem;">$${totTransferencia.toLocaleString('es-MX')}</span></div></td>
       <td></td>
     </tr>`:''}
     ${totTarjeta>0?`<tr style="background:#f9f9f9;">
-      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">💳 Tarjeta</span><span style="font-family:var(--font-display);font-size:1rem;">$${totTarjeta.toLocaleString('es-MX')}</span></div></td>
+      <td colspan="7"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">💳 Tarjeta</span><span style="font-family:var(--font-display);font-size:1rem;">$${totTarjeta.toLocaleString('es-MX')}</span></div></td>
       <td></td>
     </tr>`:''}
     <tr style="background:#fff3f3;border-top:2px solid var(--red);">
-      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--red);min-width:140px;">TOTAL</span><span style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--red);">$${totAcumulado.toLocaleString('es-MX')}</span></div></td>
+      <td colspan="7"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--red);min-width:140px;">TOTAL</span><span style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--red);">$${totAcumulado.toLocaleString('es-MX')}</span></div></td>
       <td></td>
     </tr>`;
 
@@ -5447,20 +5462,20 @@ function renderCaja() {
   const totCategorias = Object.values(categoriaTotales).reduce((s,v)=>s+v,0);
   const filasAcumuladoCat = Object.keys(categoriaTotales).length ? `
     <tr style="border-top:2px solid var(--border);background:#f9f9f9;">
-      <td colspan="7" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO DE VENTAS POR CATEGORÍA</td>
+      <td colspan="8" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO DE VENTAS POR CATEGORÍA</td>
     </tr>
     ${Object.entries(categoriaTotales).map(([nombre,monto])=>`<tr style="background:#f9f9f9;">
-      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">${nombre}</span><span style="font-family:var(--font-display);font-size:1rem;">$${monto.toLocaleString('es-MX')}</span></div></td>
+      <td colspan="7"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-size:.85rem;min-width:140px;">${nombre}</span><span style="font-family:var(--font-display);font-size:1rem;">$${monto.toLocaleString('es-MX')}</span></div></td>
       <td></td>
     </tr>`).join('')}
     <tr style="background:#fff3f3;border-top:2px solid var(--red);">
-      <td colspan="6"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--red);min-width:140px;">TOTAL</span><span style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--red);">$${totCategorias.toLocaleString('es-MX')}</span></div></td>
+      <td colspan="7"><div style="display:flex;align-items:baseline;gap:1rem;"><span style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--red);min-width:140px;">TOTAL</span><span style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--red);">$${totCategorias.toLocaleString('es-MX')}</span></div></td>
       <td></td>
     </tr>` : '';
 
   const filaDetalleTitulo = (filasMens || filasMovs) ? `
     <tr style="border-top:2px solid var(--border);">
-      <td colspan="7" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">DETALLE DE MOVIMIENTOS</td>
+      <td colspan="8" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">DETALLE DE MOVIMIENTOS</td>
     </tr>` : '';
 
   tbody.innerHTML = filasAcumulado + filasAcumuladoCat + filaDetalleTitulo + filasMens + filasMovs;
@@ -5597,7 +5612,8 @@ function guardarVenta() {
       productoId: prodId, productoNombre: prod?.nombre||'Producto',
       cantidad: cant, monto: total,
       categoria: categoriaVenta, concepto, metodo, notas,
-      fecha, estado: 'pendiente', fechaPago: null
+      fecha, estado: 'pendiente', fechaPago: null,
+      registradoPor: nombreUsuarioActual()
     });
     DB.set('creditos', creditos);
     closeModal('modalVenta');
@@ -5618,7 +5634,8 @@ function guardarVenta() {
       fecha,
       notas,
       miembroId: miembroId || null,
-      miembroNombre: miembro?.nombre || null
+      miembroNombre: miembro?.nombre || null,
+      registradoPor: nombreUsuarioActual()
     };
     const movimientos = DB.get('movimientos',[]);
     movimientos.push(mov);
@@ -5743,7 +5760,8 @@ function guardarEgreso() {
     monto,
     metodo: document.getElementById('egresoMetodo').value,
     fecha: document.getElementById('egresoFecha').value,
-    notas: document.getElementById('egresoNotas').value.trim()
+    notas: document.getElementById('egresoNotas').value.trim(),
+    registradoPor: nombreUsuarioActual()
   };
   const movimientos = DB.get('movimientos',[]);
   movimientos.push(mov);
@@ -5850,22 +5868,23 @@ function renderReporteFinanciero() {
       const ventasHoy = movsFiltrados.filter(m=>m.tipo==='ingreso' && !/crédito pagado/.test(m.concepto||''));
       const egresosHoy = movsFiltrados.filter(m=>m.tipo==='egreso');
 
-      const filaHTML = (concepto, quien, monto, metodo, color) => `
+      const filaHTML = (concepto, quien, monto, metodo, color, usuario) => `
         <tr>
           <td>${concepto}</td>
           <td style="color:var(--text-light);">${quien}</td>
           <td style="font-family:var(--font-display);color:${color};">$${Number(monto||0).toLocaleString('es-MX')}</td>
           <td style="font-size:.78rem;color:var(--text-light);text-transform:capitalize;">${metodo||'—'}</td>
+          <td style="font-size:.75rem;color:var(--text-light);">${usuario||'—'}</td>
         </tr>`;
 
       let filas = '';
-      pagosFiltrados.forEach(p => filas += filaHTML(`💳 Mensualidad (${p.plan||''})`, p.memberName, p.monto, p.metodo, '#16A34A'));
-      ventasHoy.forEach(m => filas += filaHTML('🛒 '+(m.concepto||'Venta'), nombreCategoriaMov(m.categoria,'ingreso'), m.monto, m.metodo, '#16A34A'));
-      creditosCobradosHoy.forEach(c => filas += filaHTML('✅ Crédito cobrado: '+c.concepto, c.miembroNombre, c.monto, c.metodo, '#16A34A'));
-      egresosHoy.forEach(m => filas += filaHTML('💸 '+(m.concepto||'Egreso')+' · '+nombreCategoriaMov(m.categoria,'egreso'), '—', m.monto, m.metodo, '#DC2626'));
+      pagosFiltrados.forEach(p => filas += filaHTML(`💳 Mensualidad (${p.plan||''})`, p.memberName, p.monto, p.metodo, '#16A34A', p.registradoPor));
+      ventasHoy.forEach(m => filas += filaHTML('🛒 '+(m.concepto||'Venta'), nombreCategoriaMov(m.categoria,'ingreso'), m.monto, m.metodo, '#16A34A', m.registradoPor));
+      creditosCobradosHoy.forEach(c => filas += filaHTML('✅ Crédito cobrado: '+c.concepto, c.miembroNombre, c.monto, c.metodo, '#16A34A', c.pagadoPor));
+      egresosHoy.forEach(m => filas += filaHTML('💸 '+(m.concepto||'Egreso')+' · '+nombreCategoriaMov(m.categoria,'egreso'), '—', m.monto, m.metodo, '#DC2626', m.registradoPor));
 
       const tablaMovs = !filas ? `<div style="text-align:center;color:var(--text-light);padding:1.5rem;">Sin movimientos este día</div>` : `
-        <table><thead><tr><th>CONCEPTO</th><th>QUIÉN / CATEGORÍA</th><th>MONTO</th><th>MÉTODO</th></tr></thead>
+        <table><thead><tr><th>CONCEPTO</th><th>QUIÉN / CATEGORÍA</th><th>MONTO</th><th>MÉTODO</th><th>USUARIO</th></tr></thead>
         <tbody>${filas}</tbody></table>`;
 
       const pendientesHTML = creditosNuevosHoy.filter(c=>c.estado==='pendiente').length ? `
@@ -7317,7 +7336,7 @@ function renderReportePagos() {
 
   const tbody = document.getElementById('rpTabla');
   if (!tbody) return;
-  if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="no-data">Sin pagos en este período</div></td></tr>`; return; }
+  if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="7"><div class="no-data">Sin pagos en este período</div></td></tr>`; return; }
   const icons = { efectivo:'💵', transferencia:'🏦', tarjeta:'💳' };
   const sorted = filtered.sort((a,b)=>limpiarFecha(a.fechaPago).localeCompare(limpiarFecha(b.fechaPago)));
   const totEfectivo      = sorted.filter(p=>p.metodo==='efectivo').reduce((s,p)=>s+Number(p.monto),0);
@@ -7333,39 +7352,40 @@ function renderReportePagos() {
       <td style="font-size:.78rem;color:var(--text-light);">${periodoPagoTexto(p).replace('Cubre: ','')}</td>
       <td style="font-family:var(--font-display);font-size:1.1rem;">$${Number(p.monto).toLocaleString()}</td>
       <td>${icons[p.metodo]||'💵'} ${p.metodo}</td>
+      <td style="font-size:.75rem;color:var(--text-light);">${p.registradoPor||'—'}</td>
     </tr>`).join('') + `
     <tr style="border-top:2px solid var(--border);background:#f9f9f9;">
-      <td colspan="6" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO POR TIPO</td>
+      <td colspan="7" style="padding:.6rem 0 .3rem;font-family:var(--font-cond);font-size:.75rem;color:var(--text-light);letter-spacing:.08em;">ACUMULADO POR TIPO</td>
     </tr>
     ${totEfectivo>0?`<tr style="background:#f9f9f9;">
       <td colspan="4" style="font-family:var(--font-cond);font-size:.85rem;">💵 Efectivo</td>
       <td style="font-family:var(--font-display);font-size:1rem;">$${totEfectivo.toLocaleString('es-MX')}</td>
-      <td></td>
+      <td></td><td></td>
     </tr>`:''}
     ${totTransferencia>0?`<tr style="background:#f9f9f9;">
       <td colspan="4" style="font-family:var(--font-cond);font-size:.85rem;">🏦 Transferencia</td>
       <td style="font-family:var(--font-display);font-size:1rem;">$${totTransferencia.toLocaleString('es-MX')}</td>
-      <td></td>
+      <td></td><td></td>
     </tr>`:''}
     ${totTarjeta>0?`<tr style="background:#f9f9f9;">
       <td colspan="4" style="font-family:var(--font-cond);font-size:.85rem;">💳 Tarjeta</td>
       <td style="font-family:var(--font-display);font-size:1rem;">$${totTarjeta.toLocaleString('es-MX')}</td>
-      <td></td>
+      <td></td><td></td>
     </tr>`:''}
     <tr style="background:#fff3f3;border-top:2px solid var(--red);">
       <td colspan="4" style="font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--red);">TOTAL</td>
       <td style="font-family:var(--font-display);font-size:1.2rem;font-weight:700;color:var(--red);">$${totGeneral.toLocaleString('es-MX')}</td>
-      <td></td>
+      <td></td><td></td>
     </tr>`;
 }
 
 function exportReportePagosCSV() {
   const tbody = document.getElementById('rpTabla');
   const title = document.getElementById('rpTableTitle')?.textContent || 'Reporte Pagos';
-  const rows  = [['Fecha','Miembro','Plan','Monto','Método']];
+  const rows  = [['Fecha','Miembro','Plan','Periodo','Monto','Método','Usuario']];
   document.querySelectorAll('#rpTabla tr').forEach(tr => {
     const tds = tr.querySelectorAll('td');
-    if (tds.length >= 5) rows.push([tds[0].textContent, tds[1].textContent, tds[2].textContent, tds[3].textContent, tds[4].textContent]);
+    if (tds.length >= 7) rows.push([tds[0].textContent, tds[1].textContent, tds[2].textContent, tds[3].textContent, tds[4].textContent, tds[5].textContent, tds[6].textContent]);
   });
   const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a = document.createElement('a');
@@ -7686,7 +7706,10 @@ function exportReportePagosPDF(compartir=false) {
   const rows = [];
   document.querySelectorAll('#rpTabla tr').forEach(tr => {
     const tds = tr.querySelectorAll('td');
-    if (tds.length >= 5) rows.push([tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(), tds[3].textContent.trim(), tds[4].textContent.trim().replace(/[^\x00-\x7F\xC0-\xFF]/g, '').trim()]);
+    if (tds.length >= 7) rows.push([
+      tds[0].textContent.trim(), tds[1].textContent.trim(), tds[2].textContent.trim(), tds[3].textContent.trim(),
+      tds[4].textContent.trim(), tds[5].textContent.trim().replace(/[^\x00-\x7F\xC0-\xFF]/g, '').trim(), tds[6].textContent.trim()
+    ]);
   });
   if (!rows.length) { toast('Sin datos para exportar','warning'); return; }
 
@@ -7699,7 +7722,7 @@ function exportReportePagosPDF(compartir=false) {
 
   const result = buildReportePagosPDF(
     title, 'REPORTE DE INGRESOS',
-    ['FECHA','MIEMBRO','PLAN','MONTO','METODO'],
+    ['FECHA','MIEMBRO','PLAN','PERIODO','MONTO','METODO','USUARIO'],
     rows,
     ['Tu esfuerzo construye el mejor gimnasio.', 'Cada pago es un paso hacia la mejor version de tu miembro. — JOMAC'],
     { efectivo: totEfectivo, transferencia: totTransferencia, tarjeta: totTarjeta, total: totGeneral }
