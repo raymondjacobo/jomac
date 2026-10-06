@@ -2327,6 +2327,19 @@ function initDB() {
 }
 
 
+// Devuelve solo el pago más reciente (mayor fechaFin) de cada miembro: si ya renovó, su pago viejo vencido no cuenta
+function ultimoPagoPorMiembro(payments) {
+  const ult = {};
+  payments.forEach(p => {
+    if (!p.activo) return;
+    const k = p.memberId || p.memberName;
+    const fin = limpiarFecha(p.fechaFin);
+    if (!ult[k] || fin > limpiarFecha(ult[k].fechaFin) ||
+        (fin === limpiarFecha(ult[k].fechaFin) && limpiarFecha(p.fechaPago) > limpiarFecha(ult[k].fechaPago))) ult[k] = p;
+  });
+  return Object.values(ult);
+}
+
 // Normaliza fecha de Sheets (puede venir como ISO completo) a YYYY-MM-DD
 function limpiarFecha(valor) {
   if (!valor) return '';
@@ -2846,7 +2859,7 @@ function loadDashboard() {
 
   // Expiring: vencidos hasta 8 días atrás + próximos a vencer hasta 8 días adelante
   const expBody = document.getElementById('expiringTable');
-  const exp = payments.filter(p => {
+  const exp = ultimoPagoPorMiembro(payments).filter(p => {
     const fin = new Date(String(p.fechaFin).substring(0,10)+'T00:00:00');
     const now = new Date(); now.setHours(0,0,0,0);
     const diff = Math.ceil((fin-now)/(1000*60*60*24));
@@ -3349,7 +3362,7 @@ function renderMiembros() {
 function exportVencimientosPDF() {
   const payments = DB.get('payments', []);
   const now = new Date(); now.setHours(0,0,0,0);
-  const exp = payments.filter(p => {
+  const exp = ultimoPagoPorMiembro(payments).filter(p => {
     const fin = new Date(String(p.fechaFin).substring(0,10)+'T00:00:00');
     const diff = Math.ceil((fin - now) / (1000*60*60*24));
     return diff >= -8 && diff <= 8 && p.activo;
