@@ -2466,6 +2466,30 @@ function nombreUsuarioActual() {
   if (currentUser.type === 'instructor') return currentUser.data?.nombre || currentUser.name || 'Instructor';
   return currentUser.name || 'Usuario';
 }
+
+// ── Integridad: no se elimina nada que ya tenga movimientos; solo se edita ──
+function contarMovimientosProducto(id) {
+  return DB.get('movimientos',[]).filter(m=>m.productoId===id).length +
+         DB.get('creditos',[]).filter(c=>c.productoId===id).length;
+}
+function contarMovimientosCategoria(tipo, id) {
+  const movs = DB.get('movimientos',[]);
+  if (tipo==='prod') return DB.get('productos',[]).filter(p=>p.categoria===id).length;
+  if (tipo==='ing') {
+    const esVentas = (getCats('ing').find(c=>c.id===id)?.nombre||'').toLowerCase()==='ventas';
+    return movs.filter(m=>m.tipo==='ingreso' && (m.categoria===id || (esVentas && m.categoria==='ventas'))).length +
+           DB.get('creditos',[]).filter(c=>c.categoria===id).length;
+  }
+  return movs.filter(m=>m.tipo==='egreso' && m.categoria===id).length;
+}
+function bloquearEliminar(que, n, detalle) {
+  toast(`No se puede eliminar ${que}: tiene ${n} ${detalle}. Solo puedes editarlo.`, 'error');
+}
+function sinPermisoEdicion(que) {
+  if (!esInstructorLimitado()) return false;
+  toast(`Sin permiso para ${que}`, 'error');
+  return true;
+}
 let editingMemberId = null;
 let selectedPlan = null;
 let mnSelectedPlan = null;
@@ -5100,9 +5124,9 @@ function renderInventario() {
       <td><strong style="color:${stockBajo?'#DC2626':'var(--text)'};">${p.stock||0}</strong></td>
       <td style="color:var(--text-light);">${p.stockMin||0}</td>
       <td>${stockBajo?'<span style="background:#FEE2E2;color:#DC2626;border-radius:4px;padding:.15rem .5rem;font-size:.75rem;">⚠ BAJO</span>':'<span style="background:#DCFCE7;color:#16A34A;border-radius:4px;padding:.15rem .5rem;font-size:.75rem;">OK</span>'}</td>
-      <td>
+      <td>${esInstructorLimitado() ? '' : `
         <button onclick="editarProducto('${p.id}')" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:.25rem .5rem;cursor:pointer;font-size:.75rem;">✏️</button>
-        <button onclick="eliminarProducto('${p.id}')" style="background:transparent;border:1px solid #FECACA;border-radius:4px;color:var(--red);cursor:pointer;padding:.25rem .5rem;font-size:.75rem;margin-left:.3rem;">🗑</button>
+        <button onclick="eliminarProducto('${p.id}')" style="background:transparent;border:1px solid #FECACA;border-radius:4px;color:var(--red);cursor:pointer;padding:.25rem .5rem;font-size:.75rem;margin-left:.3rem;">🗑</button>`}
       </td>
     </tr>`;
   }).join('');
@@ -5121,6 +5145,7 @@ function abrirModalProducto() {
 }
 
 function editarProducto(id) {
+  if (esInstructorLimitado()) { toast('Sin permiso para editar productos','error'); return; }
   const p = DB.get('productos',[]).find(x=>x.id===id);
   if (!p) return;
   actualizarSelectsCategorias();
@@ -5160,6 +5185,9 @@ function guardarProducto() {
 }
 
 function eliminarProducto(id) {
+  if (esInstructorLimitado()) { toast('Sin permiso para eliminar productos','error'); return; }
+  const nMov = contarMovimientosProducto(id);
+  if (nMov > 0) { bloquearEliminar('este producto', nMov, 'movimiento(s) registrado(s)'); return; }
   if (!confirm('¿Eliminar este producto?')) return;
   const productos = DB.get('productos',[]).filter(p=>p.id!==id);
   DB.set('productos', productos);
@@ -6044,8 +6072,8 @@ function renderCatalogoCats() {
         <span style="font-size:1.2rem;">${c.icon}</span>
         <span style="flex:1;font-size:.88rem;font-weight:500;">${c.nombre}</span>
         ${(tipo==='egr' && c.vincula==='propio') ? `<button data-id="${c.id}" onclick="abrirCatalogoPropio('${c.id}')" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--red);" title="Administrar artículos de esta categoría">📦</button>` : ''}
-        <button data-tipo="${tipo}" data-id="${c.id}" data-accion="editar" onclick="handleCatBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--text-light);">✏️</button>
-        <button data-tipo="${tipo}" data-id="${c.id}" data-accion="eliminar" onclick="handleCatBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>
+        ${esInstructorLimitado() ? '' : `<button data-tipo="${tipo}" data-id="${c.id}" data-accion="editar" onclick="handleCatBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--text-light);">✏️</button>
+        <button data-tipo="${tipo}" data-id="${c.id}" data-accion="eliminar" onclick="handleCatBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>`}
       </div>`).join('');
   });
   // Actualizar selects de modales
@@ -6054,6 +6082,7 @@ function renderCatalogoCats() {
 }
 
 function abrirModalCategoria(tipo, id=null) {
+  if (id && sinPermisoEdicion('editar categorías')) return;
   const cats = getCats(tipo);
   const cat  = id ? cats.find(c=>c.id===id) : null;
 
@@ -6166,7 +6195,7 @@ function renderCatalogoPropioList(catId) {
   el.innerHTML = items.length ? items.map(it=>`
     <div style="display:flex;align-items:center;gap:.7rem;padding:.5rem .7rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:.4rem;">
       <span style="flex:1;font-size:.87rem;font-weight:500;">${it.nombre}${it.precio?` — $${Number(it.precio).toLocaleString('es-MX')}`:''}</span>
-      <button onclick="eliminarItemCatalogoPropio('${catId}','${it.id}')" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>
+      ${esInstructorLimitado() ? '' : `<button onclick="eliminarItemCatalogoPropio('${catId}','${it.id}')" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>`}
     </div>`).join('') : `<div style="font-size:.83rem;color:var(--text-light);padding:.5rem;">Sin artículos todavía. Agrega el primero abajo.</div>`;
 }
 
@@ -6185,6 +6214,9 @@ function agregarItemCatalogoPropio(catId) {
 }
 
 function eliminarItemCatalogoPropio(catId, itemId) {
+  if (sinPermisoEdicion('eliminar artículos')) return;
+  const nMov = contarMovimientosProducto(itemId);
+  if (nMov > 0) { bloquearEliminar('este artículo', nMov, 'movimiento(s) registrado(s)'); return; }
   if (!confirm('¿Eliminar este artículo?')) return;
   saveCatalogoPropio(catId, getCatalogoPropio(catId).filter(it=>it.id!==itemId));
   renderCatalogoPropioList(catId);
@@ -6210,6 +6242,12 @@ function guardarCategoria() {
 }
 
 function eliminarCategoria(tipo, id) {
+  if (sinPermisoEdicion('eliminar categorías')) return;
+  const nMov = contarMovimientosCategoria(tipo, id);
+  if (nMov > 0) {
+    bloquearEliminar('esta categoría', nMov, tipo==='prod' ? 'producto(s) asignado(s)' : 'movimiento(s) registrado(s)');
+    return;
+  }
   if (!confirm('¿Eliminar esta categoría?')) return;
   const cats = getCats(tipo).filter(c=>c.id!==id);
   saveCats(tipo, cats);
@@ -6325,8 +6363,8 @@ function renderListEquipos() {
         </span>
       </span>
       <button data-id="${e.id}" data-accion="baja" onclick="handleEquipoBtn(this)" title="Dar de baja" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#DC2626;">🔻</button>
-      <button data-id="${e.id}" data-accion="editar" onclick="handleEquipoBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--text-light);">✏️</button>
-      <button data-id="${e.id}" data-accion="eliminar" onclick="handleEquipoBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>
+      ${esInstructorLimitado() ? '' : `<button data-id="${e.id}" data-accion="editar" onclick="handleEquipoBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:var(--text-light);">✏️</button>
+      <button data-id="${e.id}" data-accion="eliminar" onclick="handleEquipoBtn(this)" style="background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;">✕</button>`}
     </div>`).join('') : `<div style="font-size:.83rem;color:var(--text-light);padding:.5rem;">Sin equipos registrados.</div>`;
 }
 
@@ -6399,6 +6437,7 @@ function confirmarBajaEquipo(id) {
 }
 
 function abrirFormEquipo(id=null) {
+  if (id && sinPermisoEdicion('editar equipos')) return;
   const equipos = getEquipos();
   const eq = id ? equipos.find(e=>e.id===id) : null;
   const prev = document.getElementById('equipoInlineForm');
@@ -6456,8 +6495,11 @@ function guardarEquipoInline(id) {
 }
 
 function eliminarEquipo(id) {
+  if (sinPermisoEdicion('eliminar equipos')) return;
   const eq = getEquipos().find(e=>e.id===id);
   if (!eq) return;
+  const nMovEq = contarMovimientosProducto(id) + (eq.bajas||[]).length;
+  if (nMovEq > 0) { bloquearEliminar('este equipo', nMovEq, 'movimiento(s) (compras o bajas)'); return; }
   const stock = Number(eq.stock||0);
   const nBajas = (eq.bajas||[]).length;
 
@@ -6513,9 +6555,11 @@ function eliminarEquipo(id) {
 }
 
 function confirmarEliminarEquipo(id) {
+  if (sinPermisoEdicion('eliminar equipos')) return;
   const equipos = getEquipos();
   const eq = equipos.find(e=>e.id===id);
   if (!eq) return;
+  if (contarMovimientosProducto(id) + (eq.bajas||[]).length > 0) { toast('No se puede eliminar: tiene movimientos','error'); return; }
   const stock = Number(eq.stock||0);
   const nBajas = (eq.bajas||[]).length;
 
