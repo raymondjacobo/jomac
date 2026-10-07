@@ -4390,6 +4390,23 @@ function checkinPress(d) {
 function checkinBack()  { checkinPin=checkinPin.slice(0,-1); updatePinDisplay(checkinPin,'cpd'); }
 function checkinClear() { checkinPin=''; updatePinDisplay(checkinPin,'cpd'); document.getElementById('checkinResult').innerHTML=''; }
 
+/* Ordena horarios activos: primero el que contiene la hora actual (más reciente en iniciar), luego el más cercano */
+function ordenarHorariosAhora(arr, min) {
+  const rango = h => {
+    const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
+    const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
+    return [ih*60+im, fh*60+fm];
+  };
+  return arr.slice().sort((a,b)=>{
+    const [ai,af]=rango(a), [bi,bf]=rango(b);
+    const ad = (min>=ai && min<af), bd = (min>=bi && min<bf);
+    if (ad!==bd) return ad ? -1 : 1;
+    if (ad && bd) return bi-ai;
+    const da = min<ai ? ai-min : min-af, db = min<bi ? bi-min : min-bf;
+    return da-db;
+  });
+}
+
 function processCheckin() {
   const members = DB.get('members', []);
   const m = members.find(x => String(x.pin) === String(checkinPin) && x.activo);
@@ -4446,17 +4463,16 @@ function processCheckin() {
       horariosDetP.push(h);
     }
   }
-  horarioDetP = horariosDetP[0] || null;
+  const horariosOrdP = ordenarHorariosAhora(horariosDetP, horaMinutosP);
+  horarioDetP = horariosOrdP[0] || null;
   // Validar duplicado ANTES de mostrar confirmación
   const _today = fmtDate(new Date());
   const _att = DB.get('attendance', []);
-  const _yaEnHorario = horariosDetP.length > 0 && _att.find(a =>
+  const _yaEnHorario = horarioDetP && _att.find(a =>
     String(a.memberId) === String(m.id) &&
     limpiarFecha(a.fecha) === _today &&
-    horariosDetP.some(h =>
-      String(a.horarioId) === String(h.id) ||
-      (a.horarioNombre||'').trim() === (h.nombre||'').trim()
-    )
+    (String(a.horarioId) === String(horarioDetP.id) ||
+     (a.horarioNombre||'').trim() === (horarioDetP.nombre||'').trim())
   );
   if (_yaEnHorario) {
     result.innerHTML = `<div class="alert alert-info">ℹ️ ${m.nombre} ya registró entrada en <strong>${_yaEnHorario.horarioNombre||''}</strong> hoy — ${limpiarHora(_yaEnHorario.hora)}</div>`;
@@ -4728,13 +4744,15 @@ function renderCheckinMember() {
   const _ahoraYC  = new Date();
   const _minYC    = _ahoraYC.getHours()*60 + _ahoraYC.getMinutes();
   const _diaYC    = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_ahoraYC.getDay()]);
-  const _activosYC = DB.get('horarios',[]).filter(h => {
+  const _activosYCall = DB.get('horarios',[]).filter(h => {
     if (h.activo === false) return false;
     const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
     const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
     const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
     return diasH.some(d=>normalizarDia(d)===_diaYC) && _minYC>=ih*60+im-15 && _minYC<=fh*60+fm+15;
   });
+  // Solo el turno vigente (el más cercano) cuenta para saber si ya checó
+  const _activosYC = ordenarHorariosAhora(_activosYCall, _minYC).slice(0,1);
 
   // ¿Ya checó en alguno de los horarios activos ahora?
   const _entradaActivoHoy = attHoy.find(a =>
@@ -4785,6 +4803,7 @@ function renderCheckinMember() {
         _activosOH.push(h);
       }
     }
+    _activosOH.splice(0,_activosOH.length,...ordenarHorariosAhora(_activosOH,_minOH));
 
     card.innerHTML = `
       <div class="checkin-title" style="font-size:1.6rem;">¡HOLA, ${m.nombre.split(' ')[0].toUpperCase()}!</div>
@@ -4879,6 +4898,7 @@ function renderCheckinMember() {
     }
   }
   const hayHorarioActivo = horariosActivosAhora.length > 0;
+  horariosActivosAhora.splice(0, horariosActivosAhora.length, ...ordenarHorariosAhora(horariosActivosAhora, minAhora));
   window._horariosDisponiblesCheckin = horariosActivosAhora;
 
   // Listo para checar
@@ -4982,14 +5002,15 @@ function doMemberCheckin(forzar, horarioIdElegido) {
     if (hEleg) { horarioActivoId = hEleg.id; horarioActivoNombre = hEleg.nombre; }
   }
   if (!horarioActivoId) {
+    const _candA = [];
     for (const h of _todosH) {
       const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
       const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
       const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
-      if (diasH.some(d=>normalizarDia(d)===_diaAhora) && _minAhora>=ih*60+im-15 && _minAhora<=fh*60+fm+15) {
-        horarioActivoId = h.id; horarioActivoNombre = h.nombre; break;
-      }
+      if (diasH.some(d=>normalizarDia(d)===_diaAhora) && _minAhora>=ih*60+im-15 && _minAhora<=fh*60+fm+15) _candA.push(h);
     }
+    const _bestA = ordenarHorariosAhora(_candA, _minAhora)[0];
+    if (_bestA) { horarioActivoId = _bestA.id; horarioActivoNombre = _bestA.nombre; }
   }
   const reg = {
     id: 'A'+Date.now(),
@@ -6664,13 +6685,14 @@ function loadMemberProfile() {
     const _ahoraP2  = new Date();
     const _minP2    = _ahoraP2.getHours()*60 + _ahoraP2.getMinutes();
     const _diaP2    = normalizarDia(['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][_ahoraP2.getDay()]);
-    const _activosP2 = DB.get('horarios',[]).filter(h => {
+    const _activosP2all = DB.get('horarios',[]).filter(h => {
       if (h.activo === false) return false;
       const [ih,im] = limpiarHora(h.horaInicio).split(':').map(Number);
       const [fh,fm] = limpiarHora(h.horaFin).split(':').map(Number);
       const diasH   = Array.isArray(h.dias) ? h.dias : (h.dias||'').split(',');
       return diasH.some(d=>normalizarDia(d)===_diaP2) && _minP2>=ih*60+im-15 && _minP2<=fh*60+fm+15;
     });
+    const _activosP2 = ordenarHorariosAhora(_activosP2all, _minP2).slice(0,1);
     const yaEnEsteHorario = attHoy.some(a =>
       _activosP2.some(h => String(a.horarioId)===String(h.id) || (a.horarioNombre||'').trim()===(h.nombre||'').trim())
     ) || (_activosP2.length === 0 && attHoy.length > 0);
@@ -6797,14 +6819,15 @@ function doCheckinFromProfile(forzar, horarioIdElegido) {
     if (_hEl) { _hActId=_hEl.id; _hActNom=_hEl.nombre; }
   }
   if (!_hActId) {
+    const _candP = [];
     for (const h of _hAll) {
       const [ih,im]=limpiarHora(h.horaInicio).split(':').map(Number);
       const [fh,fm]=limpiarHora(h.horaFin).split(':').map(Number);
       const diasH=Array.isArray(h.dias)?h.dias:(h.dias||'').split(',');
-      if (diasH.some(d=>normalizarDia(d)===_dP) && _mP>=ih*60+im-15 && _mP<=fh*60+fm+15) {
-        _hActId=h.id; _hActNom=h.nombre; break;
-      }
+      if (diasH.some(d=>normalizarDia(d)===_dP) && _mP>=ih*60+im-15 && _mP<=fh*60+fm+15) _candP.push(h);
     }
+    const _bestP = ordenarHorariosAhora(_candP, _mP)[0];
+    if (_bestP) { _hActId=_bestP.id; _hActNom=_bestP.nombre; }
   }
   const reg  = {
     id: 'A'+Date.now(),
