@@ -1733,7 +1733,7 @@
             <option value="01">Enero</option><option value="02">Febrero</option>
             <option value="03">Marzo</option><option value="04">Abril</option>
             <option value="05">Mayo</option><option value="06">Junio</option>
-            <option value="07" selected>Julio</option><option value="08">Agosto</option>
+            <option value="07">Julio</option><option value="08">Agosto</option>
             <option value="09">Septiembre</option><option value="10">Octubre</option>
             <option value="11">Noviembre</option><option value="12">Diciembre</option>
           </select>
@@ -2765,7 +2765,17 @@ function navigateTo(id) {
   if (id==='reporteOrigen')    { renderReporteOrigen(); }
   if (id==='inventario')        { renderInventario(); }
   if (id==='caja')              { if (!document.getElementById('cajaFecha').value) document.getElementById('cajaFecha').value = fmtDate(new Date()); renderCaja(); }
-  if (id==='reporteFinanciero') { renderReporteFinanciero(); }
+  if (id==='reporteFinanciero') {
+    // Por defecto: mes y año en curso (una sola vez por sesión, para no pisar lo que el usuario elija)
+    if (!window._rfInicializado) {
+      const _n = new Date();
+      const _m = document.getElementById('rfMes'), _a = document.getElementById('rfAnio');
+      if (_m) _m.value = String(_n.getMonth()+1).padStart(2,'0');
+      if (_a) _a.value = _n.getFullYear();
+      window._rfInicializado = true;
+    }
+    renderReporteFinanciero();
+  }
   if (id==='checkin')    { patchAttendanceHorarios(); renderAttendanceList(); }
   if (id==='perfil')     loadMemberProfile();
   if (id==='mispagos')    loadMisPagos();
@@ -5870,8 +5880,8 @@ function renderReporteFinanciero() {
   } else if (tipoSel) { tipoSel.disabled = false; if (diaInput) diaInput.disabled = false; }
 
   const tipo = tipoSel?.value || 'mes';
-  const mes  = document.getElementById('rfMes')?.value  || '07';
-  const anio = document.getElementById('rfAnio')?.value || '2026';
+  const mes  = document.getElementById('rfMes')?.value  || String(new Date().getMonth()+1).padStart(2,'0');
+  const anio = document.getElementById('rfAnio')?.value || String(new Date().getFullYear());
   const diaWrap = document.getElementById('rfDiaWrap');
   const mesWrap = document.getElementById('rfMesWrap');
   const anioWrap = document.getElementById('rfAnioWrap');
