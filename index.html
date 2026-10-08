@@ -2374,6 +2374,7 @@ async function restaurarAlIniciar() {
   }
 
   try {
+    await flushPendingSync();
     const r = await fetch(gasUrl + '?action=getData', { credentials:'omit' });
     const json = await r.json();
 
@@ -2402,7 +2403,10 @@ async function restaurarAlIniciar() {
         fecha: limpiarFecha(a.fecha),
         hora:  limpiarHora(a.hora)
       }));
-      DB.set('attendance', d.attendance);
+      // Conservar asistencias que aún no se confirmaron en el Sheet
+      const _idsSheet = new Set(d.attendance.map(a=>String(a.id)));
+      const _pendAtt = _pendQueue().filter(x=>x.action==='saveAttendance' && x.data && !_idsSheet.has(String(x.data.id))).map(x=>x.data);
+      DB.set('attendance', d.attendance.concat(_pendAtt));
     }
       if (d.horarios) {
         d.horarios = d.horarios.map(h => ({
@@ -4559,7 +4563,7 @@ function confirmarCheckin() {
     }
   }
 
-  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 
   // Usar horario detectado en processCheckin
   const horarioDetectado = window._horarioDetP || null;
@@ -4604,7 +4608,7 @@ function registrarCheckinSinHorario() {
   const result = document.getElementById('checkinResult');
   if (!m || !pago) { checkinClear(); return; }
   const today = fmtDate(new Date());
-  const hora  = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  const hora  = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
   const att   = DB.get('attendance', []);
   const reg   = {
     id:'A'+Date.now(), memberId:m.id, memberName:m.nombre,
@@ -4992,7 +4996,7 @@ function doMemberCheckin(forzar, horarioIdElegido) {
   if (!_hayHorario) { toast('No hay horario activo en este momento','error'); renderCheckinMember(); return; }
 
   const att  = DB.get('attendance', []);
-  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
   const hs   = getHorarioStatus(m);
 
   // Usar el horario elegido por el usuario, o el ACTIVO detectado automáticamente
@@ -6807,7 +6811,7 @@ function doCheckinFromProfile(forzar, horarioIdElegido) {
   const pago  = getActivePago(m.id);
   if (!pago) { toast('Sin membresía activa','error'); return; }
   const att  = DB.get('attendance', []);
-  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
   // Detectar horario activo ahora
   const _aP  = new Date();
   const _mP  = _aP.getHours()*60 + _aP.getMinutes();
@@ -6901,19 +6905,42 @@ async function testGAS() {
 // ════════════════════════════════════
 // GOOGLE SHEETS SYNC
 // ════════════════════════════════════
+/* Cola de registros pendientes: si un envío al Sheet falla (o la página se cierra antes), se reintenta */
+function _pendQueue() { try { return JSON.parse(localStorage.getItem('jomac__pendingSync')||'[]'); } catch(e) { return []; } }
+function _pendSave(q) { try { localStorage.setItem('jomac__pendingSync', JSON.stringify(q)); } catch(e) {} }
+async function _postRecord(gasUrl, action, data) {
+  const r = await fetch(gasUrl, {
+    method: 'POST', credentials: 'omit', keepalive: true,
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action, data })
+  });
+  const j = await r.json();
+  if (!j || j.ok === false) throw new Error((j && j.error) || 'respuesta inválida');
+  return j;
+}
 async function syncRecord(action, data) {
   const cfg    = DB.get('config',{gasUrl:''});
   const gasUrl = cfg.gasUrl || GAS_URL;
   if (!gasUrl) return;
+  // Se encola ANTES de enviar: si la página se cierra a medias, se reintenta al volver a abrir
+  const q = _pendQueue();
+  const key = action + ':' + (data && data.id);
+  if (!q.some(x=>x.key===key)) { q.push({key, action, data}); _pendSave(q); }
   try {
-    const r = await fetch(gasUrl, {
-      method: 'POST',
-      credentials: 'omit',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action, data })
-    });
-    return r.json();
-  } catch(e) { console.warn('Sync failed', e); }
+    const j = await _postRecord(gasUrl, action, data);
+    _pendSave(_pendQueue().filter(x=>x.key!==key));
+    return j;
+  } catch(e) { console.warn('Sync failed (queda pendiente)', e); }
+}
+async function flushPendingSync() {
+  const gasUrl = (DB.get('config',{gasUrl:''}).gasUrl) || GAS_URL;
+  if (!gasUrl) return;
+  for (const it of _pendQueue()) {
+    try {
+      await _postRecord(gasUrl, it.action, it.data);
+      _pendSave(_pendQueue().filter(x=>x.key!==it.key));
+    } catch(e) { console.warn('Pendiente sigue sin enviarse', it.key, e); }
+  }
 }
 
 async function syncGoogleSheets(silencioso=false) {
@@ -6964,7 +6991,7 @@ async function syncGoogleSheets(silencioso=false) {
     return;
   }
   // Actualizar indicadores
-  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
   const el = document.getElementById('lastSyncTime');
   if (el) el.textContent = '✔ Última sync: ' + hora;
   const sb = document.getElementById('lastSyncSidebar');
