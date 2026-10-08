@@ -2525,6 +2525,15 @@ async function descargarDatosNube() {
   return json.data;
 }
 
+// El Dashboard es solo lectura: si es la pantalla activa, se vuelve a dibujar con lo recién descargado (no interrumpe ninguna captura)
+function refrescarDashboardSiActivo() {
+  try {
+    if (!currentUser) return;
+    const act = document.querySelector('.nav-item.active');
+    if (act && act.id === 'nav_dashboard') navigateTo('dashboard');
+  } catch(e) {}
+}
+
 // Actualizar = enviar lo pendiente y luego TRAER lo más reciente. Nunca sube copias completas.
 let _pulling = false;
 async function actualizarDatos(silencioso) {
@@ -2542,6 +2551,8 @@ async function actualizarDatos(silencioso) {
     if (!silencioso) {   // la pantalla solo se refresca cuando el usuario pidió actualizar (así no se interrumpe una captura)
       const act = document.querySelector('.nav-item.active');
       if (act && act.id && act.id.startsWith('nav_') && currentUser) { try { navigateTo(act.id.slice(4)); } catch(e) {} }
+    } else {
+      refrescarDashboardSiActivo();   // en la descarga automática solo el Dashboard (solo lectura)
     }
     return true;
   } catch (e) {
@@ -2569,6 +2580,7 @@ async function restaurarAlIniciar() {
   try {
     const d = await descargarDatosNube();   // solo se descarga lo más reciente (lo pendiente se conserva y se reintenta aparte)
     aplicarDatosNube(d);
+    refrescarDashboardSiActivo();           // si el Dashboard ya se había pintado con datos viejos, se redibuja con los nuevos
     setTimeout(() => flushOps(), 300);      // reintento de guardados que hubieran quedado sin enviar (no es parte de la descarga)
     if (loginBrand) {
       loginBrand.style.color = '#7FFF00';
