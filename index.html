@@ -913,7 +913,7 @@
       <div id="lastSyncSidebar" style="font-size:.68rem;color:var(--text-faint);font-family:var(--font-cond);letter-spacing:1px;text-align:center;padding:.3rem 0 .5rem;display:none;">
         <span style="color:#22C55E;">●</span> <span id="lastSyncSidebarText">Sin sincronizar</span>
       </div>
-      <button onclick="syncGoogleSheets()" style="margin-bottom:.5rem;border-color:#22C55E;color:#16A34A;">☁ SINCRONIZAR</button>
+      <button onclick="syncGoogleSheets()" style="margin-bottom:.5rem;border-color:#22C55E;color:#16A34A;">☁ ACTUALIZAR DATOS</button>
       <button onclick="logout()">⏏ CERRAR SESIÓN</button>
     </div>
   </div>
@@ -930,7 +930,7 @@
         </div>
         <div style="font-size:.72rem;font-family:var(--font-cond);letter-spacing:3px;color:var(--text-light);text-transform:uppercase;" id="dashDate"></div>
         <div style="margin-top:.8rem;">
-        <button class="btn-secondary" onclick="syncGoogleSheets()" style="font-size:.75rem;padding:.4rem 1rem;">☁ SINCRONIZAR</button>
+        <button class="btn-secondary" onclick="syncGoogleSheets()" style="font-size:.75rem;padding:.4rem 1rem;">☁ ACTUALIZAR DATOS</button>
       </div>
       <div id="lastSyncTime" style="font-size:.7rem;color:var(--text-faint);font-family:var(--font-cond);letter-spacing:1px;margin-top:.5rem;text-align:center;"></div>
       </div>
@@ -2315,9 +2315,150 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwDaxZqi9HBZT20qU032utz
 // DATA LAYER — localStorage
 // ════════════════════════════════════
 const DB = {
+  _silent: false,   // true = escribir solo en este equipo, sin mandar nada a Sheets (se usa al descargar)
   get: (key, def) => { try { return JSON.parse(localStorage.getItem('jomac_'+key)) ?? def; } catch { return def; }},
-  set: (key, val) => localStorage.setItem('jomac_'+key, JSON.stringify(val)),
+  set: (key, val) => {
+    let prev;
+    if (!DB._silent && (SYNC_TABLAS[key] || SYNC_KV[key] || key==='config')) {
+      try { prev = JSON.parse(localStorage.getItem('jomac_'+key)); } catch(e) { prev = undefined; }
+    }
+    localStorage.setItem('jomac_'+key, JSON.stringify(val));
+    if (!DB._silent) { try { syncDiff(key, prev, val); } catch(e) { console.warn('syncDiff', e); } }
+  },
 };
+
+// ════════════════════════════════════
+// GUARDADO POR REGISTRO → Google Sheets (cola persistente)
+// Cada cambio se detecta comparando el valor anterior con el nuevo y se manda SOLO ese registro.
+// Nunca se sube una copia completa de la base.
+// ════════════════════════════════════
+const SYNC_TABLAS = { members:1, payments:1, attendance:1, horarios:1, instructores:1, productos:1, movimientos:1, creditos:1 };
+const SYNC_KV     = { cats_prod:1, cats_ing:1, cats_egr:1, equipos:1, catEgrItems:1 };
+const OPS_KEY     = 'jomac__opsQueue';
+let _opsSeq = 0, _flushing = false, _flushTimer = null, _flushFallos = 0;
+
+function opsQueue() { try { return JSON.parse(localStorage.getItem(OPS_KEY) || '[]'); } catch(e) { return []; } }
+function opsSave(q) { try { localStorage.setItem(OPS_KEY, JSON.stringify(q)); } catch(e) { console.warn('cola llena', e); } }
+function _opClave(o) { return o.tabla + '|' + (o.t==='delete' ? o.id : (o.rec.id !== undefined ? o.rec.id : o.rec.key)); }
+
+function opsEnqueue(list) {
+  if (!list.length) return;
+  const u = (typeof nombreUsuarioActual === 'function') ? nombreUsuarioActual() : '';
+  const q = opsQueue();
+  list.forEach(o => {
+    o.q = Date.now() + '_' + (++_opsSeq);
+    o.u = u;
+    const k = _opClave(o);
+    for (let i = q.length - 1; i >= 0; i--) if (_opClave(q[i]) === k) q.splice(i, 1);  // vale la última operación del mismo registro
+    q.push(o);
+  });
+  opsSave(q);
+  actualizarIndicadorSync();
+  clearTimeout(_flushTimer);
+  _flushTimer = setTimeout(() => flushOps(), 400);
+}
+
+function syncDiff(key, prev, val) {
+  if (SYNC_TABLAS[key]) {
+    if (!Array.isArray(val)) return;
+    const antes = new Map();
+    (Array.isArray(prev) ? prev : []).forEach(r => { if (r && r.id !== undefined) antes.set(String(r.id), JSON.stringify(r)); });
+    const ahora = new Set(), ops = [];
+    val.forEach(r => {
+      if (!r || r.id === undefined) return;
+      const id = String(r.id); ahora.add(id);
+      if (antes.get(id) !== JSON.stringify(r)) ops.push({ t:'upsert', tabla:key, rec:r });
+    });
+    antes.forEach((_, id) => { if (!ahora.has(id)) ops.push({ t:'delete', tabla:key, id }); });
+    opsEnqueue(ops);
+  } else if (SYNC_KV[key]) {
+    if (JSON.stringify(prev) !== JSON.stringify(val)) opsEnqueue([{ t:'upsert', tabla:'cats', rec:{ key, value: val } }]);
+  } else if (key === 'config') {
+    const p = (prev && typeof prev === 'object') ? prev : {};
+    const ops = [];
+    Object.keys(val || {}).forEach(k => {
+      if (JSON.stringify(p[k]) !== JSON.stringify(val[k])) ops.push({ t:'upsert', tabla:'config', rec:{ key:k, value: val[k] } });
+    });
+    opsEnqueue(ops);
+  }
+}
+
+function actualizarIndicadorSync(extra) {
+  const n = opsQueue().length;
+  const sb = document.getElementById('lastSyncSidebar'), st = document.getElementById('lastSyncSidebarText');
+  if (!sb || !st) return;
+  sb.style.display = 'block';
+  if (n > 0) { st.textContent = '⏳ ' + n + ' cambio(s) por enviar' + (extra ? ' · ' + extra : ''); }
+}
+
+function _gasUrlActual() {
+  let cfg = {};
+  try { cfg = JSON.parse(localStorage.getItem('jomac_config')) || {}; } catch(e) {}
+  return cfg.gasUrl || GAS_URL;
+}
+
+async function flushOps() {
+  if (_flushing) return opsQueue().length === 0;
+  const gasUrl = _gasUrlActual();
+  if (!gasUrl) return false;
+  _flushing = true;
+  try {
+    while (true) {
+      const lote = opsQueue().slice(0, 40);
+      if (!lote.length) return true;
+      const cuerpo = JSON.stringify({ action: 'batch', data: { ops: lote, usuario: lote[0].u || '' } });
+      const r = await fetch(gasUrl, {
+        method: 'POST', credentials: 'omit', keepalive: cuerpo.length < 60000,
+        headers: { 'Content-Type': 'text/plain' },
+        body: cuerpo
+      });
+      const j = await r.json();
+      if (!j || j.ok === false) throw new Error((j && j.error) || 'respuesta inválida del servidor');
+      const hechos = new Set(lote.map(o => o.q));
+      opsSave(opsQueue().filter(o => !hechos.has(o.q)));
+      _flushFallos = 0;
+      if (j.backup === false) console.warn('El espejo en el backup falló en este lote');
+    }
+  } catch (e) {
+    console.warn('No se pudo enviar a Sheets (queda en cola):', e);
+    _flushFallos++;
+    actualizarIndicadorSync('reintentando');
+    if (_flushFallos === 3 && typeof toast === 'function') {
+      toast('⚠ ' + opsQueue().length + ' cambio(s) no se han podido guardar en Sheets (' + (e && e.message || 'sin conexión') + '). Se conservan en este equipo y se reintentan solos.', 'error');
+    }
+    return false;
+  } finally {
+    _flushing = false;
+    if (opsQueue().length === 0) {
+      const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+      const sb = document.getElementById('lastSyncSidebar'), st = document.getElementById('lastSyncSidebarText');
+      if (sb && st) { sb.style.display = 'block'; st.textContent = '☁ Guardado en Sheets: ' + hora; }
+    }
+  }
+}
+// Reintentos: al volver la conexión, periódicamente y al salir de la página
+window.addEventListener('online', () => flushOps());
+setInterval(() => { if (opsQueue().length) flushOps(); }, 20000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && opsQueue().length) flushOps(); });
+window.addEventListener('pagehide', () => { if (opsQueue().length) flushOps(); });
+
+// Reaplica sobre los datos descargados los cambios que aún no se han podido enviar
+function opsReaplicar(d) {
+  opsQueue().forEach(o => {
+    if (SYNC_TABLAS[o.tabla]) {
+      d[o.tabla] = d[o.tabla] || [];
+      if (o.t === 'delete') d[o.tabla] = d[o.tabla].filter(r => String(r.id) !== String(o.id));
+      else {
+        const i = d[o.tabla].findIndex(r => String(r.id) === String(o.rec.id));
+        if (i >= 0) d[o.tabla][i] = o.rec; else d[o.tabla].push(o.rec);
+      }
+    } else if (o.tabla === 'cats' && o.t === 'upsert') {
+      d[o.rec.key] = o.rec.value;
+    } else if (o.tabla === 'config' && o.t === 'upsert') {
+      d.config = d.config || {}; d.config[o.rec.key] = o.rec.value;
+    }
+  });
+}
 
 // Seed demo data if first run
 function initDB() {
@@ -2358,6 +2499,59 @@ function limpiarHora(valor) {
   return s.substring(0,5);
 }
 
+// Normaliza y guarda en este equipo lo descargado de Sheets (sin mandar nada de vuelta)
+function aplicarDatosNube(d) {
+  if (d.members)  d.members = d.members.map(m => ({ ...m, fechaNac: limpiarFecha(m.fechaNac), fechaReg: limpiarFecha(m.fechaReg) }));
+  if (d.payments) d.payments = d.payments.map(p => ({ ...p, fechaPago: limpiarFecha(p.fechaPago), fechaInicio: limpiarFecha(p.fechaInicio), fechaFin: limpiarFecha(p.fechaFin) }));
+  if (d.attendance) d.attendance = d.attendance.map(a => ({ ...a, fecha: limpiarFecha(a.fecha), hora: limpiarHora(a.hora) }));
+  if (d.horarios) d.horarios = d.horarios.map(h => ({
+    ...h,
+    dias: typeof h.dias === 'string' ? h.dias.split(',').filter(Boolean) : (h.dias || []),
+    horaInicio: limpiarHora(h.horaInicio),
+    horaFin:    limpiarHora(h.horaFin)
+  }));
+  opsReaplicar(d);   // lo que todavía no se ha enviado se conserva encima de lo descargado
+  DB._silent = true;
+  try {
+    ['members','payments','attendance','horarios','instructores','productos','movimientos','creditos',
+     'cats_prod','cats_ing','cats_egr','equipos','catEgrItems','config'].forEach(k => { if (d[k]) DB.set(k, d[k]); });
+  } finally { DB._silent = false; }
+}
+
+async function descargarDatosNube() {
+  const r = await fetch(_gasUrlActual() + '?action=getData', { credentials:'omit', cache:'no-store' });
+  const json = await r.json();
+  if (!json || !json.ok || !json.data) throw new Error((json && json.error) || 'respuesta inválida');
+  return json.data;
+}
+
+// Actualizar = enviar lo pendiente y luego TRAER lo más reciente. Nunca sube copias completas.
+let _pulling = false;
+async function actualizarDatos(silencioso) {
+  if (_pulling) return false;
+  _pulling = true;
+  try {
+    if (!silencioso) toast('Actualizando...', '');
+    await flushOps();
+    const d = await descargarDatosNube();
+    aplicarDatosNube(d);
+    const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+    const sb = document.getElementById('lastSyncSidebar'), st = document.getElementById('lastSyncSidebarText'), el = document.getElementById('lastSyncTime');
+    if (sb && st) { sb.style.display = 'block'; st.textContent = '☁ Actualizado: ' + hora; }
+    if (el) el.textContent = '✔ Última actualización: ' + hora;
+    if (!silencioso) toast('✔ Datos actualizados', 'success');
+    if (!silencioso) {   // la pantalla solo se refresca cuando el usuario pidió actualizar (así no se interrumpe una captura)
+      const act = document.querySelector('.nav-item.active');
+      if (act && act.id && act.id.startsWith('nav_') && currentUser) { try { navigateTo(act.id.slice(4)); } catch(e) {} }
+    }
+    return true;
+  } catch (e) {
+    console.warn('actualizarDatos', e);
+    if (!silencioso) toast('No se pudo actualizar: ' + (e.message || 'sin conexión'), 'error');
+    return false;
+  } finally { _pulling = false; }
+}
+
 async function restaurarAlIniciar() {
   const gasUrl = GAS_URL;
   if (!gasUrl) return;
@@ -2373,75 +2567,13 @@ async function restaurarAlIniciar() {
     loginBrand.textContent = '⏳ Sincronizando datos...';
   }
 
-  const _tInicio = Date.now();
   try {
-    await flushPendingSync();
-    const r = await fetch(gasUrl + '?action=getData', { credentials:'omit' });
-    const json = await r.json();
-
-    if (json && json.ok && json.data) {
-      const d = json.data;
-      if (d.members) {
-      d.members = d.members.map(m => ({
-        ...m,
-        fechaNac: limpiarFecha(m.fechaNac),
-        fechaReg: limpiarFecha(m.fechaReg)
-      }));
-      DB.set('members', d.members);
-    }
-      if (d.payments) {
-      d.payments = d.payments.map(p => ({
-        ...p,
-        fechaPago:   limpiarFecha(p.fechaPago),
-        fechaInicio: limpiarFecha(p.fechaInicio),
-        fechaFin:    limpiarFecha(p.fechaFin)
-      }));
-      DB.set('payments', d.payments);
-    }
-      if (d.attendance) {
-      d.attendance = d.attendance.map(a => ({
-        ...a,
-        fecha: limpiarFecha(a.fecha),
-        hora:  limpiarHora(a.hora)
-      }));
-      // Conservar asistencias que aún no se confirmaron en el Sheet
-      const _idsSheet = new Set(d.attendance.map(a=>String(a.id)));
-      const _pendAtt = _pendQueue().filter(x=>x.action==='saveAttendance' && x.data && !_idsSheet.has(String(x.data.id))).map(x=>x.data);
-      // También conservar las creadas localmente mientras esta descarga estaba en curso
-      const _idsPend = new Set(_pendAtt.map(a=>String(a.id)));
-      const _recientes = DB.get('attendance',[]).filter(a => {
-        const id = String(a.id);
-        if (_idsSheet.has(id) || _idsPend.has(id)) return false;
-        const ts = Number(id.replace(/\D/g,''));
-        return ts >= _tInicio - 60000;
-      });
-      DB.set('attendance', d.attendance.concat(_pendAtt, _recientes));
-    }
-      if (d.horarios) {
-        d.horarios = d.horarios.map(h => ({
-          ...h,
-          dias: typeof h.dias === 'string' ? h.dias.split(',').filter(Boolean) : (h.dias || []),
-          horaInicio: limpiarHora(h.horaInicio),
-          horaFin:    limpiarHora(h.horaFin)
-        }));
-        DB.set('horarios', d.horarios);
-      }
-      if (d.instructores) DB.set('instructores',  d.instructores);
-      if (d.productos)    DB.set('productos',     d.productos);
-      if (d.movimientos)  DB.set('movimientos',   d.movimientos);
-      if (d.cats_prod)    DB.set('cats_prod',     d.cats_prod);
-      if (d.cats_ing)     DB.set('cats_ing',      d.cats_ing);
-      if (d.cats_egr)     DB.set('cats_egr',      d.cats_egr);
-      if (d.equipos)      DB.set('equipos',       d.equipos);
-      if (d.catEgrItems)  DB.set('catEgrItems',   d.catEgrItems);
-      if (d.creditos)     DB.set('creditos',      d.creditos);
-      if (d.config)       DB.set('config',        d.config);
-      if (loginBrand) {
-        loginBrand.style.color = '#7FFF00';
-        loginBrand.textContent = '✔ Datos actualizados';
-      }
-    } else {
-      if (loginBrand) loginBrand.textContent = 'Tu gimnasio, tu disciplina.';
+    await flushOps();                       // primero lo que haya quedado pendiente en este equipo
+    const d = await descargarDatosNube();   // luego se trae lo más reciente
+    aplicarDatosNube(d);
+    if (loginBrand) {
+      loginBrand.style.color = '#7FFF00';
+      loginBrand.textContent = '✔ Datos actualizados';
     }
   } catch(e) {
     console.error('restaurarAlIniciar error:', e);
@@ -2698,7 +2830,7 @@ function startSyncClock() {
       // Se va a sincronizar — ocultar reloj mientras sincroniza
       if (el) el.style.display = 'none';
       clearInterval(_syncClockInterval);
-      syncGoogleSheets(true);
+      actualizarDatos(true).finally(() => startSyncClock());
     }
   }, 1000);
 }
@@ -3751,7 +3883,6 @@ function saveMiembro() {
       referidoPorNombre: document.getElementById('mnOrigen').value==='recomendacion' ? (document.getElementById('mnReferidoBusqueda').value.trim() || null) : null,
       activo:true, fechaReg:fmtDate(new Date())
     });
-    syncRecord('saveMember', members[members.length-1]);
 
     toast('Miembro registrado — plan: ' + (document.getElementById('mnPlanTipo').value || 'sin plan').toUpperCase(), 'success');
   }
@@ -4255,7 +4386,6 @@ function savePago() {
   const payments = DB.get('payments', []);
   payments.push(pago);
   DB.set('payments', payments);
-  syncRecord('savePayment', pago);
   closeModal('modalNuevoPago');
   renderPagos();
   syncGoogleSheets(true);
@@ -4614,7 +4744,6 @@ function confirmarCheckin() {
   };
   att.push(reg);
   DB.set('attendance', att);
-  syncRecord('saveAttendance', reg);
   result.innerHTML = `<div class="alert alert-success">✅ ¡BIENVENIDO ${m.nombre.toUpperCase()}! — ${hora}</div>${horarioHtml}`;
   renderAttendanceList();
   setTimeout(checkinClear, 3200);
@@ -4636,7 +4765,6 @@ function registrarCheckinSinHorario() {
   };
   att.push(reg);
   DB.set('attendance', att);
-  syncRecord('saveAttendance', reg);
   result.innerHTML = `<div class="alert alert-success">✅ ¡BIENVENIDO ${m.nombre.toUpperCase()}! — ${hora}<br><small style="font-size:.75rem;opacity:.8;">Pide a tu instructor que te asigne un horario</small></div>`;
   renderAttendanceList();
   setTimeout(checkinClear, 3500);
@@ -5045,7 +5173,6 @@ function doMemberCheckin(forzar, horarioIdElegido) {
   };
   att.push(reg);
   DB.set('attendance', att);
-  syncRecord('saveAttendance', reg);
   const msgExtra = forzar ? ' (entrada adicional)' : '';
   toast('¡Entrada registrada a las '+hora+msgExtra+'!','success');
   renderCheckinMember();
@@ -5090,7 +5217,6 @@ function eliminarAsistencia(id) {
   let att = DB.get('attendance', []);
   att = att.filter(a => a.id !== id);
   DB.set('attendance', att);
-  syncRecord('deleteAttendance', { id });
   renderAsistencia();
   toast('Registro eliminado', 'success');
 }
@@ -6862,7 +6988,6 @@ function doCheckinFromProfile(forzar, horarioIdElegido) {
   };
   att.push(reg);
   DB.set('attendance', att);
-  syncRecord('saveAttendance', reg);
   toast('¡Entrada registrada a las '+hora+'!','success');
   loadMemberProfile(); // refresca el perfil con el nuevo estado
 }
@@ -6882,8 +7007,8 @@ function loadConfig() {
     adminPass:    raw.adminPass    || 'admin123',
     gasUrl:       raw.gasUrl       || GAS_URL,
   };
-  // Guardar inmediatamente si había valores vacíos
-  DB.set('config', cfg);
+  // Guardar los valores por defecto SOLO en este equipo (no se mandan al Sheet: podrían pisar valores reales si esta copia está desactualizada)
+  DB._silent = true; try { DB.set('config', cfg); } finally { DB._silent = false; }
   document.getElementById('preciodia').value    = cfg.preciodia;
   document.getElementById('preciosemana').value = cfg.preciosemana;
   document.getElementById('preciomes').value    = cfg.preciomes;
@@ -6924,151 +7049,35 @@ async function testGAS() {
 // ════════════════════════════════════
 // GOOGLE SHEETS SYNC
 // ════════════════════════════════════
-/* Cola de registros pendientes: si un envío al Sheet falla (o la página se cierra antes), se reintenta */
-function _pendQueue() { try { return JSON.parse(localStorage.getItem('jomac__pendingSync')||'[]'); } catch(e) { return []; } }
-function _pendSave(q) { try { localStorage.setItem('jomac__pendingSync', JSON.stringify(q)); } catch(e) {} }
-async function _postRecord(gasUrl, action, data) {
-  const r = await fetch(gasUrl, {
-    method: 'POST', credentials: 'omit', keepalive: true,
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action, data })
-  });
-  const j = await r.json();
-  if (!j || j.ok === false) throw new Error((j && j.error) || 'respuesta inválida');
-  return j;
-}
-async function syncRecord(action, data) {
-  const cfg    = DB.get('config',{gasUrl:''});
-  const gasUrl = cfg.gasUrl || GAS_URL;
-  if (!gasUrl) return;
-  // Se encola ANTES de enviar: si la página se cierra a medias, se reintenta al volver a abrir
-  const q = _pendQueue();
-  const key = action + ':' + (data && data.id);
-  if (!q.some(x=>x.key===key)) { q.push({key, action, data}); _pendSave(q); }
+/* Compatibilidad: si quedó algo en la cola de la versión anterior, se convierte a la cola nueva (una sola vez) */
+(function migrarColaAnterior() {
   try {
-    const j = await _postRecord(gasUrl, action, data);
-    _pendSave(_pendQueue().filter(x=>x.key!==key));
-    return j;
-  } catch(e) {
-    console.warn('Sync failed (queda pendiente)', e);
-    // Plan B: sincronización completa (la misma vía que usan pagos y miembros). Incluye todas las asistencias locales.
-    if (action === 'saveAttendance') {
-      const ok = await syncGoogleSheets(true);
-      if (ok) {
-        _pendSave(_pendQueue().filter(x=>x.key!==key));
-        return { ok:true, via:'syncAll' };
-      }
-      toast('⚠ Check-in guardado solo en este equipo (sin conexión con Sheets: ' + (e && e.message || 'error') + '). Se reintentará solo.', 'error');
-    }
-  }
-}
-async function flushPendingSync() {
-  const gasUrl = (DB.get('config',{gasUrl:''}).gasUrl) || GAS_URL;
-  if (!gasUrl) return;
-  for (const it of _pendQueue()) {
-    try {
-      await _postRecord(gasUrl, it.action, it.data);
-      _pendSave(_pendQueue().filter(x=>x.key!==it.key));
-    } catch(e) {
-      console.warn('Pendiente sigue sin enviarse', it.key, e);
-      if (it.action === 'saveAttendance' && await syncGoogleSheets(true)) {
-        _pendSave(_pendQueue().filter(x=>x.key!==it.key));
-      }
-    }
-  }
-}
+    const viejo = JSON.parse(localStorage.getItem('jomac__pendingSync') || '[]');
+    if (!viejo.length) return;
+    const ops = viejo.filter(x => x && x.data && x.data.id).map(x => ({
+      t:'upsert', tabla: x.action==='saveAttendance' ? 'attendance' : x.action==='savePayment' ? 'payments' : x.action==='saveMember' ? 'members' : null, rec: x.data
+    })).filter(o => o.tabla);
+    localStorage.removeItem('jomac__pendingSync');
+    opsEnqueue(ops);
+  } catch(e) {}
+})();
 
+/* Botón SINCRONIZAR / acciones: ya NO sube copias completas.
+   silencioso=true  → solo envía lo pendiente (los cambios ya se mandan solos al guardar).
+   silencioso=false → envía lo pendiente y además trae los datos más recientes. */
 async function syncGoogleSheets(silencioso=false) {
-  const cfg    = DB.get('config',{gasUrl:''});
-  const gasUrl = cfg.gasUrl || GAS_URL;
-  if (!gasUrl) {
-    if (!silencioso) toast('Sin URL de Apps Script configurada','warning');
-    return;
-  }
-  const members  = DB.get('members',[]);
-  const payments = DB.get('payments',[]);
-
-  // ── PROTECCIÓN: no subir si localStorage está casi vacío ──
-  if (members.length < 3 && payments.length < 3) {
-    if (!silencioso) toast('⚠ Pocos datos locales — sincronización cancelada por seguridad. Usa Restaurar desde Sheets primero.','warning');
-    console.warn('Sync cancelado: localStorage con pocos datos', members.length, payments.length);
-    return false;
-  }
-  if (!silencioso) toast('Sincronizando...','');
-  const attendance   = DB.get('attendance',[]);
-  const instructores = DB.get('instructores',[]);
-  const horarios = DB.get('horarios',[]).map(h => ({
-    ...h,
-    horaInicio: limpiarHora(h.horaInicio),
-    horaFin:    limpiarHora(h.horaFin)
-  }));
-  // Guardar versión limpia en localStorage también
-  DB.set('horarios', horarios);
-  try {
-    const r = await fetch(gasUrl, {
-      method: 'POST',
-      credentials: 'omit',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action:'syncAll', data:{ members, payments, attendance, horarios, instructores,
-        productos: DB.get('productos',[]), movimientos: DB.get('movimientos',[]),
-        cats_prod: DB.get('cats_prod', null), cats_ing: DB.get('cats_ing', null), cats_egr: DB.get('cats_egr', null),
-        equipos: DB.get('equipos', []), catEgrItems: DB.get('catEgrItems', {}), creditos: DB.get('creditos', []),
-        config: DB.get('config',{}) } })
-    });
-    const d = await r.json();
-    if (!silencioso) {
-      if (d && d.ok) toast('✔ Sincronizado con Google Sheets','success');
-      else toast('⚠ Respuesta inesperada del servidor','warning');
-    }
-    if (!d || !d.ok) return false;
-  } catch(e) {
-    if (!silencioso) toast('Error de conexión: ' + e.message,'error');
-    console.warn('Sync error', e);
-    return false;
-  }
-  // Actualizar indicadores
-  const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
-  const el = document.getElementById('lastSyncTime');
-  if (el) el.textContent = '✔ Última sync: ' + hora;
-  const sb = document.getElementById('lastSyncSidebar');
-  const st = document.getElementById('lastSyncSidebarText');
-  if (sb) sb.style.display = 'block';
-  if (st) st.textContent = '☁ Sync: ' + hora;
-  return true;
+  if (silencioso) return flushOps();
+  return actualizarDatos(false);
 }
 
 async function restaurarDesdeSheets() {
-  const cfg = DB.get('config',{gasUrl:''});
-  const gasUrl = cfg.gasUrl || GAS_URL;
-  if (!gasUrl) { toast('No hay URL de Apps Script configurada','error'); return; }
-  if (!confirm('¿Traer todos los datos desde Google Sheets?\nEsto reemplazará los datos locales de este dispositivo.')) return;
+  if (!_gasUrlActual()) { toast('No hay URL de Apps Script configurada','error'); return; }
+  if (!confirm('¿Traer los datos más recientes desde Google Sheets?\nSolo se descarga; no se sube ni se borra nada en el Sheet.')) return;
   toast('Descargando datos...','');
   try {
-    const r    = await fetch(gasUrl + '?action=getData', { credentials:'omit' });
-    const json = await r.json();
-    if (!json.ok) { toast('Error: ' + json.error,'error'); return; }
-    const d = json.data;
-    if (d.members)     DB.set('members',     d.members);
-    if (d.payments)    DB.set('payments',    d.payments);
-    if (d.attendance)  DB.set('attendance',  d.attendance);
-    if (d.horarios) {
-      d.horarios = d.horarios.map(h => ({
-        ...h,
-        dias: typeof h.dias === 'string' ? h.dias.split(',').filter(Boolean) : (h.dias || [])
-      }));
-      DB.set('horarios', d.horarios);
-    }
-    if (d.instructores)DB.set('instructores',d.instructores);
-    if (d.productos)   DB.set('productos',   d.productos);
-    if (d.movimientos) DB.set('movimientos', d.movimientos);
-    if (d.cats_prod)   DB.set('cats_prod',   d.cats_prod);
-    if (d.cats_ing)    DB.set('cats_ing',    d.cats_ing);
-    if (d.cats_egr)    DB.set('cats_egr',    d.cats_egr);
-    if (d.equipos)     DB.set('equipos',     d.equipos);
-    if (d.catEgrItems) DB.set('catEgrItems', d.catEgrItems);
-    if (d.creditos)    DB.set('creditos',    d.creditos);
-    if (d.config)      DB.set('config',      d.config);
-    toast('✔ Datos restaurados desde Google Sheets','success');
+    await flushOps();
+    aplicarDatosNube(await descargarDatosNube());
+    toast('✔ Datos actualizados desde Google Sheets','success');
     setTimeout(() => location.reload(), 1200);
   } catch(e) {
     toast('Error de conexión','error');
@@ -9050,12 +9059,17 @@ function ejecutarLimpiarDatos() {
   const passAdmin = cfg.adminPass || 'admin123';
   if (!pass) { if(errEl) errEl.textContent = '⚠ Ingresa tu contraseña'; return; }
   if (pass !== passAdmin) { if(errEl) errEl.textContent = '⚠ Contraseña incorrecta'; return; }
-  ['members','payments','attendance','horarios','instructores'].forEach(k => DB.set(k,[]));
-  // Preservar config con GAS_URL
-  const cfgActual = DB.get('config',{});
-  DB.set('config', { ...cfgActual, gasUrl: cfgActual.gasUrl || GAS_URL });
+  // SOLO limpia este equipo. No se manda ninguna baja al Sheet: los datos de la nube no se tocan
+  // y se volverán a descargar al recargar.
+  DB._silent = true;
+  try {
+    ['members','payments','attendance','horarios','instructores'].forEach(k => DB.set(k,[]));
+    const cfgActual = DB.get('config',{});
+    DB.set('config', { ...cfgActual, gasUrl: cfgActual.gasUrl || GAS_URL });
+  } finally { DB._silent = false; }
+  opsSave([]);
   closeModal('modalLimpiarDatos');
-  toast('✔ Todos los datos han sido eliminados','success');
+  toast('✔ Datos de ESTE equipo eliminados (el Sheet no se tocó; se volverán a descargar)','success');
   setTimeout(() => location.reload(), 1500);
 }
 
