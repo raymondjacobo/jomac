@@ -2532,8 +2532,7 @@ async function actualizarDatos(silencioso) {
   _pulling = true;
   try {
     if (!silencioso) toast('Actualizando...', '');
-    await flushOps();
-    const d = await descargarDatosNube();
+    const d = await descargarDatosNube();   // solo descarga; los guardados pendientes se reintentan por su cuenta
     aplicarDatosNube(d);
     const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
     const sb = document.getElementById('lastSyncSidebar'), st = document.getElementById('lastSyncSidebarText'), el = document.getElementById('lastSyncTime');
@@ -2568,9 +2567,9 @@ async function restaurarAlIniciar() {
   }
 
   try {
-    await flushOps();                       // primero lo que haya quedado pendiente en este equipo
-    const d = await descargarDatosNube();   // luego se trae lo más reciente
+    const d = await descargarDatosNube();   // solo se descarga lo más reciente (lo pendiente se conserva y se reintenta aparte)
     aplicarDatosNube(d);
+    setTimeout(() => flushOps(), 300);      // reintento de guardados que hubieran quedado sin enviar (no es parte de la descarga)
     if (loginBrand) {
       loginBrand.style.color = '#7FFF00';
       loginBrand.textContent = '✔ Datos actualizados';
@@ -7018,6 +7017,42 @@ function loadConfig() {
   document.getElementById('cfgAdminPass').value = cfg.adminPass;
 }
 
+/* Parámetros: cada campo se guarda solo al cambiarlo (al salir del campo o dar Enter).
+   El botón GUARDAR sigue funcionando igual. Un campo vacío o inválido NO se guarda. */
+const CFG_CAMPOS = {
+  preciodia:    { key:'preciodia',    num:true,  etq:'Precio por día' },
+  preciosemana: { key:'preciosemana', num:true,  etq:'Precio por semana' },
+  preciomes:    { key:'preciomes',    num:true,  etq:'Precio por mes' },
+  precioanual:  { key:'precioanual',  num:true,  etq:'Precio anual' },
+  gasUrl:       { key:'gasUrl',       num:false, etq:'URL de Apps Script' },
+  cfgAdminUser: { key:'adminUser',    num:false, etq:'Usuario administrador' },
+  cfgAdminPass: { key:'adminPass',    num:false, etq:'Contraseña de administrador' }
+};
+function autoGuardarConfigCampo(id) {
+  const def = CFG_CAMPOS[id], el = document.getElementById(id);
+  if (!def || !el) return;
+  const raw = el.value.trim();
+  let val;
+  if (def.num) {
+    val = Number(raw);
+    if (!raw || !(val > 0)) { toast(def.etq + ': valor inválido, no se guardó', 'error'); return; }
+  } else {
+    if (!raw) { toast(def.etq + ' no puede quedar vacío, no se guardó', 'error'); return; }
+    val = raw;
+  }
+  const cfg = DB.get('config', {});
+  if (cfg[def.key] === val) return;
+  cfg[def.key] = val;
+  DB.set('config', cfg);
+  toast('✔ ' + def.etq + ' guardado', 'success');
+}
+function iniciarAutoGuardadoConfig() {
+  Object.keys(CFG_CAMPOS).forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el._autoCfg) { el._autoCfg = true; el.addEventListener('change', () => autoGuardarConfigCampo(id)); }
+  });
+}
+
 function saveConfig() {
   const cfg = DB.get('config', {}); // preservar campos existentes (ej. finanzasActivo)
   cfg.preciodia    = Number(document.getElementById('preciodia').value)||50;
@@ -7062,9 +7097,8 @@ async function testGAS() {
   } catch(e) {}
 })();
 
-/* Botón SINCRONIZAR / acciones: ya NO sube copias completas.
-   silencioso=true  → solo envía lo pendiente (los cambios ya se mandan solos al guardar).
-   silencioso=false → envía lo pendiente y además trae los datos más recientes. */
+/* silencioso=true  → es parte de GUARDAR: reintenta enviar lo que haya pendiente de guardar.
+   silencioso=false → botón Actualizar: SOLO descarga los datos más recientes (no sube nada). */
 async function syncGoogleSheets(silencioso=false) {
   if (silencioso) return flushOps();
   return actualizarDatos(false);
@@ -7075,7 +7109,6 @@ async function restaurarDesdeSheets() {
   if (!confirm('¿Traer los datos más recientes desde Google Sheets?\nSolo se descarga; no se sube ni se borra nada en el Sheet.')) return;
   toast('Descargando datos...','');
   try {
-    await flushOps();
     aplicarDatosNube(await descargarDatosNube());
     toast('✔ Datos actualizados desde Google Sheets','success');
     setTimeout(() => location.reload(), 1200);
@@ -9021,6 +9054,7 @@ function compartirWhatsApp() {
 // ════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
   initDB();
+  iniciarAutoGuardadoConfig();
   const dd = document.getElementById('dashDate');
   if (dd) dd.textContent = formatDateNice(fmtDate(new Date()));
 });
