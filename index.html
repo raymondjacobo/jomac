@@ -2373,6 +2373,7 @@ async function restaurarAlIniciar() {
     loginBrand.textContent = '⏳ Sincronizando datos...';
   }
 
+  const _tInicio = Date.now();
   try {
     await flushPendingSync();
     const r = await fetch(gasUrl + '?action=getData', { credentials:'omit' });
@@ -2406,7 +2407,15 @@ async function restaurarAlIniciar() {
       // Conservar asistencias que aún no se confirmaron en el Sheet
       const _idsSheet = new Set(d.attendance.map(a=>String(a.id)));
       const _pendAtt = _pendQueue().filter(x=>x.action==='saveAttendance' && x.data && !_idsSheet.has(String(x.data.id))).map(x=>x.data);
-      DB.set('attendance', d.attendance.concat(_pendAtt));
+      // También conservar las creadas localmente mientras esta descarga estaba en curso
+      const _idsPend = new Set(_pendAtt.map(a=>String(a.id)));
+      const _recientes = DB.get('attendance',[]).filter(a => {
+        const id = String(a.id);
+        if (_idsSheet.has(id) || _idsPend.has(id)) return false;
+        const ts = Number(id.replace(/\D/g,''));
+        return ts >= _tInicio - 60000;
+      });
+      DB.set('attendance', d.attendance.concat(_pendAtt, _recientes));
     }
       if (d.horarios) {
         d.horarios = d.horarios.map(h => ({
@@ -2698,7 +2707,7 @@ function startSyncClock() {
 setTimeout(() => startSyncClock(), 0);
 
 function startApp() {
-  initDB();
+  // (los datos ya se bajaron al abrir la página; volver a restaurar aquí pisaba los check-ins recién hechos)
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('sidebarAvatar').textContent = currentUser.initial;
@@ -6930,7 +6939,18 @@ async function syncRecord(action, data) {
     const j = await _postRecord(gasUrl, action, data);
     _pendSave(_pendQueue().filter(x=>x.key!==key));
     return j;
-  } catch(e) { console.warn('Sync failed (queda pendiente)', e); }
+  } catch(e) {
+    console.warn('Sync failed (queda pendiente)', e);
+    // Plan B: sincronización completa (la misma vía que usan pagos y miembros). Incluye todas las asistencias locales.
+    if (action === 'saveAttendance') {
+      const ok = await syncGoogleSheets(true);
+      if (ok) {
+        _pendSave(_pendQueue().filter(x=>x.key!==key));
+        return { ok:true, via:'syncAll' };
+      }
+      toast('⚠ Check-in guardado solo en este equipo (sin conexión con Sheets: ' + (e && e.message || 'error') + '). Se reintentará solo.', 'error');
+    }
+  }
 }
 async function flushPendingSync() {
   const gasUrl = (DB.get('config',{gasUrl:''}).gasUrl) || GAS_URL;
@@ -6939,7 +6959,12 @@ async function flushPendingSync() {
     try {
       await _postRecord(gasUrl, it.action, it.data);
       _pendSave(_pendQueue().filter(x=>x.key!==it.key));
-    } catch(e) { console.warn('Pendiente sigue sin enviarse', it.key, e); }
+    } catch(e) {
+      console.warn('Pendiente sigue sin enviarse', it.key, e);
+      if (it.action === 'saveAttendance' && await syncGoogleSheets(true)) {
+        _pendSave(_pendQueue().filter(x=>x.key!==it.key));
+      }
+    }
   }
 }
 
@@ -6957,7 +6982,7 @@ async function syncGoogleSheets(silencioso=false) {
   if (members.length < 3 && payments.length < 3) {
     if (!silencioso) toast('⚠ Pocos datos locales — sincronización cancelada por seguridad. Usa Restaurar desde Sheets primero.','warning');
     console.warn('Sync cancelado: localStorage con pocos datos', members.length, payments.length);
-    return;
+    return false;
   }
   if (!silencioso) toast('Sincronizando...','');
   const attendance   = DB.get('attendance',[]);
@@ -6985,10 +7010,11 @@ async function syncGoogleSheets(silencioso=false) {
       if (d && d.ok) toast('✔ Sincronizado con Google Sheets','success');
       else toast('⚠ Respuesta inesperada del servidor','warning');
     }
+    if (!d || !d.ok) return false;
   } catch(e) {
     if (!silencioso) toast('Error de conexión: ' + e.message,'error');
     console.warn('Sync error', e);
-    return;
+    return false;
   }
   // Actualizar indicadores
   const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
@@ -6998,6 +7024,7 @@ async function syncGoogleSheets(silencioso=false) {
   const st = document.getElementById('lastSyncSidebarText');
   if (sb) sb.style.display = 'block';
   if (st) st.textContent = '☁ Sync: ' + hora;
+  return true;
 }
 
 async function restaurarDesdeSheets() {
